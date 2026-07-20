@@ -5,14 +5,15 @@
  * física vetorial de asteroides e tiros, detecção de colisões, suporte a controles de Xbox,
  * inteligência artificial das naves inimigas e drone auxiliar, sistema de upgrades e salvamento.
  *
- * Refinamento: Adicionado controle de volume de SFX e Música salvos no localStorage.
+ * Refinamento: Adicionado plano de fundo cósmico procedimental e espetacular para cada fase,
+ * contendo galáxias coloridas, auroras ondulantes e planetas sombreados com anéis.
  */
 
 // ==========================================================================
 // CONFIGURAÇÕES GERAIS E ESTADO DO JOGO
 // ==========================================================================
 const GAME_CONFIG = {
-    version: "1.1.0", // Versão com controle de volume interativo
+    version: "1.2.0", // Versão com Background Cósmico Dinâmico
     totalSectors: 12,
     baseScrapGain: 15,
     maxUpgrades: 5,
@@ -53,7 +54,8 @@ let gameState = {
     gamepadConnected: false,
     gamepadIndex: null,
     lastTime: 0,
-    universeSpeedMultiplier: 1.0 // Multiplicador de velocidade inicial ajustável pelo jogador!
+    universeSpeedMultiplier: 1.0, // Multiplicador de velocidade inicial ajustável pelo jogador!
+    bgTime: 0 // Variável de tempo para animar auroras e nébulas sutilmente
 };
 
 // Listas de Objetos Ativos no Jogo
@@ -636,6 +638,7 @@ function startSector(sectorNum) {
     gameState.currentWave = 1;
     gameState.totalWaves = 3;
     gameState.screenShake = 0;
+    gameState.bgTime = 0; // Resetar contador de tempo para animações sutis do fundo
 
     // Reset de entidades
     entities.player = new Player(GAME_CONFIG.canvasWidth / 2, GAME_CONFIG.canvasHeight / 2);
@@ -728,7 +731,11 @@ function gameLoop(timestamp) {
 
     if (gameState.active && !gameState.paused) {
         // Multiplicador de velocidade inicial do universo aplicado ao dt!
-        update(dt * gameState.universeSpeedMultiplier);
+        const universeDt = dt * gameState.universeSpeedMultiplier;
+        gameState.bgTime += dt; // Tempo contínuo e sutil do fundo, sem acelerar com a velocidade do jogo
+        update(universeDt);
+    } else {
+        gameState.bgTime += dt * 0.5; // Continuar animando sutilmente mesmo em menu ou pausa
     }
 
     draw();
@@ -1171,8 +1178,14 @@ function draw() {
         ctx.translate(dx, dy);
     }
 
-    // Desenhar Fundo de Estrelas Estático Sutil de coordenadas virtuais
+    // Desenhar Fundo de Estrelas Estático e o Fundo Cósmico procedimental da fase!
     drawStarfield();
+    if (gameState.active) {
+        drawCosmicBackground(pilotData.currentSector);
+    } else {
+        // Desenha o fundo da fase 1 no menu por estética
+        drawCosmicBackground(1);
+    }
 
     // 2. Desenhar Anomalias
     entities.anomalies.forEach(anom => anom.draw());
@@ -1218,14 +1231,128 @@ function draw() {
 
 // Estrelas procedimentais em posições fixas sem precisar de array complexo
 function drawStarfield() {
-    ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
     // Gerar pequenos pontos baseados em lógica pseudo-aleatória constante
-    for (let i = 1; i <= 60; i++) {
+    for (let i = 1; i <= 80; i++) {
         const sx = (i * 317) % GAME_CONFIG.canvasWidth;
         const sy = (i * 743) % GAME_CONFIG.canvasHeight;
-        const size = (i % 3 === 0) ? 2.2 : 1.1;
+        const size = (i % 3 === 0) ? 2.0 : 1.0;
         ctx.fillRect(sx, sy, size, size);
     }
+}
+
+/**
+ * DESENHA O PLANO DE FUNDO CÓSMICO CUSTOMIZADO DE CADA FASE
+ * Importante: A opacidade é mantida extremamente sutil (0.02 - 0.06) para que o fundo nunca
+ * atrapalhe a visualização dos asteroides cinzas e das naves com lasers brilhantes.
+ */
+function drawCosmicBackground(sector) {
+    ctx.save();
+
+    // Variável para animações baseadas no tempo
+    const t = gameState.bgTime;
+
+    // FASES 1, 2, 3: Nébulas e Galáxia de Gás Violeta/Azul no fundo
+    if (sector <= 3) {
+        // Galáxia Espiral sutil gerada por gradientes radiais sobrepostos
+        const gradX = GAME_CONFIG.canvasWidth * 0.3 + Math.sin(t * 0.05) * 50;
+        const gradY = GAME_CONFIG.canvasHeight * 0.4 + Math.cos(t * 0.04) * 40;
+
+        const nebula = ctx.createRadialGradient(gradX, gradY, 50, gradX, gradY, 600);
+        nebula.addColorStop(0, "rgba(76, 29, 149, 0.06)"); // Roxo profundo muito sutil
+        nebula.addColorStop(0.5, "rgba(30, 58, 138, 0.03)"); // Azul muito sutil
+        nebula.addColorStop(1, "rgba(0, 0, 0, 0)");
+
+        ctx.fillStyle = nebula;
+        ctx.beginPath();
+        ctx.arc(gradX, gradY, 800, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // FASES 4, 5, 6: Planeta Gigante Gasoso com Sombreamento Realista e Anéis
+    if (sector >= 4 && sector <= 6) {
+        ctx.save();
+        const planetX = GAME_CONFIG.canvasWidth * 0.75;
+        const planetY = GAME_CONFIG.canvasHeight * 0.3;
+        const radius = 120;
+
+        // Desenhar os anéis do planeta com inclinação elíptica (Desenhar primeiro para ficar atrás do hemisfério traseiro ou por cima de forma sutil)
+        ctx.strokeStyle = "rgba(147, 197, 253, 0.025)";
+        ctx.lineWidth = 15;
+        ctx.save();
+        ctx.translate(planetX, planetY);
+        ctx.rotate(-Math.PI / 6); // Inclinação dos anéis
+        ctx.scale(2.2, 0.45); // Forma elíptica do anel
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 1.1, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Corpo do Planeta
+        // Gradiente radial para simular iluminação solar 3D realista (Luz vindo do canto superior esquerdo e sombra no canto inferior direito)
+        const lightX = planetX - radius * 0.4;
+        const lightY = planetY - radius * 0.4;
+        const planetGrad = ctx.createRadialGradient(lightX, lightY, radius * 0.1, planetX, planetY, radius);
+        planetGrad.addColorStop(0, "rgba(147, 197, 253, 0.05)"); // Azul claro iluminado
+        planetGrad.addColorStop(0.7, "rgba(30, 58, 138, 0.03)"); // Azul escuro
+        planetGrad.addColorStop(0.95, "rgba(3, 3, 15, 0.05)"); // Sombra espacial preta profunda
+
+        ctx.fillStyle = planetGrad;
+        ctx.beginPath();
+        ctx.arc(planetX, planetY, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    // FASES 7, 8, 9: Aurora Boreal ondulante e etérea por curvas matemáticas
+    if (sector >= 7 && sector <= 9) {
+        ctx.save();
+        ctx.lineWidth = 60;
+        // Desenhar 3 ondas senoidais sobrepostas com opacidade ultra baixa e cores verde/azul neon
+        const colors = ["rgba(16, 185, 129, 0.015)", "rgba(6, 182, 212, 0.012)", "rgba(59, 130, 246, 0.008)"];
+
+        colors.forEach((col, index) => {
+            ctx.strokeStyle = col;
+            ctx.beginPath();
+
+            const offsetPhase = t * 0.2 + index * Math.PI * 0.3;
+            for (let x = 0; x <= GAME_CONFIG.canvasWidth; x += 50) {
+                const y = GAME_CONFIG.canvasHeight * 0.5 + Math.sin(x * 0.0025 + offsetPhase) * 120 + Math.cos(x * 0.001 - offsetPhase * 0.5) * 60;
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+        });
+
+        ctx.restore();
+    }
+
+    // FASES 10, 11, 12: Super Galáxia de Singularidade e Vórtice Dimensional Roxo/Vermelho
+    if (sector >= 10) {
+        ctx.save();
+        const centerX = GAME_CONFIG.canvasWidth / 2;
+        const centerY = GAME_CONFIG.canvasHeight / 2;
+
+        // Vórtice elíptico central gerado com gradiente radial sutilmente rotacionado
+        ctx.translate(centerX, centerY);
+        ctx.rotate(t * 0.015); // Rotação sutil da galáxia ao longo do tempo
+
+        const vortex = ctx.createRadialGradient(0, 0, 10, 0, 0, 500);
+        vortex.addColorStop(0, "rgba(220, 38, 38, 0.05)"); // Vermelho brilhante
+        vortex.addColorStop(0.3, "rgba(124, 58, 237, 0.03)"); // Violeta profundo
+        vortex.addColorStop(0.7, "rgba(30, 27, 75, 0.015)"); // Roxo espacial escuro
+        vortex.addColorStop(1, "rgba(0,0,0,0)");
+
+        ctx.fillStyle = vortex;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 800, 350, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    ctx.restore();
 }
 
 function updateHUD() {
@@ -1983,7 +2110,7 @@ class SectorBoss {
         if (fill) fill.style.width = `${(this.hp / this.maxHp) * 100}%`;
 
         // Screen Shake rápido de feedback de dano
-        gameState.screenShake = 4.5; // Ajuste fino no feedback de impacto de dano do Boss
+        gameState.screenShake = 4.5;
 
         if (this.hp <= 0) {
             this.destroy();
