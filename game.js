@@ -4,12 +4,15 @@
  * Este arquivo gerencia o motor de jogo completo, o loop principal, o desenho de elementos no Canvas,
  * física vetorial de asteroides e tiros, detecção de colisões, suporte a controles de Xbox,
  * inteligência artificial das naves inimigas e drone auxiliar, sistema de upgrades e salvamento.
+ *
+ * Refinamento: Adicionado indicador de versão e ajuste fino no efeito de screen shake.
  */
 
 // ==========================================================================
 // CONFIGURAÇÕES GERAIS E ESTADO DO JOGO
 // ==========================================================================
 const GAME_CONFIG = {
+    version: "1.0.1", // Versão do Patch de Ajustes
     totalSectors: 12,
     baseScrapGain: 15,
     maxUpgrades: 5,
@@ -1935,7 +1938,7 @@ class SectorBoss {
         if (fill) fill.style.width = `${(this.hp / this.maxHp) * 100}%`;
 
         // Screen Shake rápido de feedback de dano
-        gameState.screenShake = 4;
+        gameState.screenShake = 4.5; // Ajuste fino no feedback de impacto de dano do Boss
 
         if (this.hp <= 0) {
             this.destroy();
