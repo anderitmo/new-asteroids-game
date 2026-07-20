@@ -79,7 +79,7 @@ body, html {
     background: rgba(10, 10, 32, 0.75);
     border: 2px solid #00ffcc;
     border-radius: 12px;
-    padding: 40px;
+    padding: 30px 40px;
     width: 100%;
     max-width: 650px;
     text-align: center;
@@ -107,7 +107,7 @@ body, html {
 /* Títulos & Textos */
 .game-title {
     font-family: 'Orbitron', sans-serif;
-    font-size: 3.5rem;
+    font-size: 3.2rem;
     font-weight: 900;
     letter-spacing: 6px;
     line-height: 1.1;
@@ -118,16 +118,16 @@ body, html {
 
 .game-title .subtitle {
     color: #00ffcc;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     letter-spacing: 12px;
     text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
 }
 
 .tagline {
-    font-size: 1.1rem;
+    font-size: 1rem;
     color: #a0aec0;
     letter-spacing: 2px;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .description {
@@ -137,42 +137,67 @@ body, html {
     margin-bottom: 25px;
 }
 
-/* Seletor de Velocidade */
-.speed-selector-container {
+/* Painel de Ajustes (Estilo Consolidado) */
+.settings-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid rgba(0, 255, 204, 0.15);
     border-radius: 8px;
-    padding: 12px 15px;
-    margin-bottom: 20px;
+    padding: 15px;
+    margin-bottom: 18px;
     text-align: left;
 }
 
-.speed-selector-container label {
+.speed-selector-container, .audio-selector-container {
+    width: 100%;
+}
+
+.speed-selector-container label, .audio-selector-container label {
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.75rem;
-    color: #a0aec0;
+    font-size: 0.72rem;
+    color: #cbd5e1;
     letter-spacing: 1px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: block;
 }
 
-.speed-control-row {
+.speed-control-row, .audio-control-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 15px;
 }
 
-.speed-label {
+.audio-control-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    width: 100%;
+}
+
+.audio-input-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 15px;
+}
+
+.speed-label, .audio-label {
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: bold;
     color: #00ffcc;
     text-shadow: 0 0 5px rgba(0, 255, 204, 0.4);
     min-width: 120px;
 }
 
-.speed-control-row input[type="range"] {
+.audio-label {
+    min-width: 50px;
+}
+
+.speed-control-row input[type="range"], .audio-input-row input[type="range"] {
     flex: 1;
     cursor: pointer;
     accent-color: #00ffcc;
@@ -182,15 +207,14 @@ body, html {
 .menu-buttons {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    margin-top: 10px;
+    gap: 10px;
 }
 
 .btn {
     font-family: 'Orbitron', sans-serif;
     font-weight: 700;
-    font-size: 1rem;
-    padding: 14px 28px;
+    font-size: 0.95rem;
+    padding: 12px 24px;
     border: 1px solid transparent;
     border-radius: 6px;
     cursor: pointer;
@@ -244,15 +268,15 @@ body, html {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(0, 255, 204, 0.2);
     border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 25px;
-    font-size: 0.95rem;
+    padding: 12px;
+    margin-bottom: 18px;
+    font-size: 0.9rem;
 }
 
 .pilot-info-row {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .pilot-info-row:last-child {

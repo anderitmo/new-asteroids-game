@@ -14,6 +14,10 @@ class SoundEngine {
         this.sfxVolume = null;
         this.muted = false;
 
+        // Configurações de volumes iniciais
+        this.musicVolumeVal = 0.75;
+        this.sfxVolumeVal = 0.70;
+
         // Escalas diferentes para cada tipo de setor para dar sensação de músicas diferentes
         this.musicScales = {
             // Escala Pentatônica de Lá Menor (Grave, Misteriosa) - Fases 1, 2, 3
@@ -44,10 +48,10 @@ class SoundEngine {
             this.musicVolume = this.ctx.createGain();
             this.sfxVolume = this.ctx.createGain();
 
-            // Configuração dos volumes padrão (Volume da música levemente mais alto agora!)
+            // Configuração dos volumes baseados nos valores atuais
             this.masterVolume.gain.setValueAtTime(0.5, this.ctx.currentTime);
-            this.musicVolume.gain.setValueAtTime(0.75, this.ctx.currentTime); // Aumentado de 0.4 para 0.75!
-            this.sfxVolume.gain.setValueAtTime(0.7, this.ctx.currentTime);
+            this.musicVolume.gain.setValueAtTime(this.musicVolumeVal, this.ctx.currentTime);
+            this.sfxVolume.gain.setValueAtTime(this.sfxVolumeVal, this.ctx.currentTime);
 
             // Conexão dos nós de ganho
             this.musicVolume.connect(this.masterVolume);
@@ -70,6 +74,28 @@ class SoundEngine {
         this.muted = m;
         if (this.masterVolume) {
             this.masterVolume.gain.setValueAtTime(m ? 0 : 0.5, this.ctx.currentTime);
+        }
+    }
+
+    /**
+     * Define o volume da música de fundo em tempo real
+     */
+    setMusicVolume(v) {
+        this.musicVolumeVal = parseFloat(v);
+        this.resume();
+        if (this.musicVolume && this.ctx) {
+            this.musicVolume.gain.setValueAtTime(this.musicVolumeVal, this.ctx.currentTime);
+        }
+    }
+
+    /**
+     * Define o volume dos efeitos sonoros em tempo real
+     */
+    setSfxVolume(v) {
+        this.sfxVolumeVal = parseFloat(v);
+        this.resume();
+        if (this.sfxVolume && this.ctx) {
+            this.sfxVolume.gain.setValueAtTime(this.sfxVolumeVal, this.ctx.currentTime);
         }
     }
 

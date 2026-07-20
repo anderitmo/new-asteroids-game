@@ -5,14 +5,14 @@
  * física vetorial de asteroides e tiros, detecção de colisões, suporte a controles de Xbox,
  * inteligência artificial das naves inimigas e drone auxiliar, sistema de upgrades e salvamento.
  *
- * Refinamento: Adicionado indicador de versão e ajuste fino no efeito de screen shake.
+ * Refinamento: Adicionado controle de volume de SFX e Música salvos no localStorage.
  */
 
 // ==========================================================================
 // CONFIGURAÇÕES GERAIS E ESTADO DO JOGO
 // ==========================================================================
 const GAME_CONFIG = {
-    version: "1.0.1", // Versão do Patch de Ajustes
+    version: "1.1.0", // Versão com controle de volume interativo
     totalSectors: 12,
     baseScrapGain: 15,
     maxUpgrades: 5,
@@ -98,6 +98,7 @@ window.addEventListener("DOMContentLoaded", () => {
     setupInputListeners();
     setupGamepadListeners();
     setupUniverseSpeedSelector();
+    setupVolumeSelectors();
     generateSectorGrid();
     updateMenuPilotBadge();
 
@@ -166,6 +167,50 @@ function updateSpeedLabel(val) {
     } else {
         label.textContent = `${val.toFixed(2)}x (Rápido)`;
         label.style.color = "#ffcc00";
+    }
+}
+
+// Configurar controladores de volume interativos
+function setupVolumeSelectors() {
+    const musicRange = document.getElementById("volume-music");
+    const musicLabel = document.getElementById("volume-music-label");
+    const sfxRange = document.getElementById("volume-sfx");
+    const sfxLabel = document.getElementById("volume-sfx-label");
+
+    // Música de fundo volume
+    if (musicRange && musicLabel) {
+        const savedMusicVol = localStorage.getItem("asteroids_neonvoid_vol_music");
+        if (savedMusicVol !== null) {
+            const vol = parseFloat(savedMusicVol);
+            SFX.musicVolumeVal = vol;
+            musicRange.value = vol;
+            musicLabel.textContent = `${Math.round(vol * 100)}%`;
+        }
+
+        musicRange.addEventListener("input", (e) => {
+            const vol = parseFloat(e.target.value);
+            SFX.setMusicVolume(vol);
+            localStorage.setItem("asteroids_neonvoid_vol_music", vol);
+            musicLabel.textContent = `${Math.round(vol * 100)}%`;
+        });
+    }
+
+    // Efeitos sonoros volume
+    if (sfxRange && sfxLabel) {
+        const savedSfxVol = localStorage.getItem("asteroids_neonvoid_vol_sfx");
+        if (savedSfxVol !== null) {
+            const vol = parseFloat(savedSfxVol);
+            SFX.sfxVolumeVal = vol;
+            sfxRange.value = vol;
+            sfxLabel.textContent = `${Math.round(vol * 100)}%`;
+        }
+
+        sfxRange.addEventListener("input", (e) => {
+            const vol = parseFloat(e.target.value);
+            SFX.setSfxVolume(vol);
+            localStorage.setItem("asteroids_neonvoid_vol_sfx", vol);
+            sfxLabel.textContent = `${Math.round(vol * 100)}%`;
+        });
     }
 }
 
