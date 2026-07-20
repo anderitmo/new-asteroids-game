@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ASTEROIDS: NEON VOID</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Ícones e Fontes Futuristas -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Fundo de estrelas em movimento sutil no menu ou sobre o jogo -->
+    <div id="game-container">
+        <!-- Canvas do Jogo -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Efeito visual de Scanner de Tela Retro-Futurista (Scanlines + Vinheta) -->
+        <div class="crt-overlay"></div>
+
+        <!-- ================= TELA DE INTRO / CARREGAMENTO / MENUS ================= -->
+        <div id="ui-overlay" class="ui-screen">
+            <!-- TELA DE BOAS-VINDAS / MENU INICIAL -->
+            <div id="menu-screen" class="menu-card active">
+                <h1 class="game-title">ASTEROIDS<br><span class="subtitle">NEON VOID</span></h1>
+                <p class="tagline">O Remake Definitivo do Clássico Espacial</p>
+
+                <div class="pilot-badge-display" id="active-pilot-badge" style="display: none;">
+                    <div class="pilot-info-row">
+                        <span class="label">Piloto Ativo:</span>
+                        <span id="display-pilot-name" class="value">GUEST</span>
+                    </div>
+                    <div class="pilot-info-row">
+                        <span class="label">Fase Máxima:</span>
+                        <span id="display-pilot-phase" class="value">Setor 1</span>
+                    </div>
+                    <div class="pilot-info-row">
+                        <span class="label">Pontos Salvos:</span>
+                        <span id="display-pilot-score" class="value">0</span>
+                    </div>
+                </div>
+
+                <div class="menu-buttons">
+                    <button id="btn-play" class="btn btn-primary">INICIAR MISSÃO</button>
+                    <button id="btn-pilot-setup" class="btn btn-secondary">REGISTRAR NOVO PILOTO</button>
+                    <button id="btn-upgrades" class="btn btn-secondary">CENTRAL DE UPGRADES</button>
+                    <button id="btn-instructions" class="btn btn-secondary">MANUAL DE VÔO</button>
+                </div>
+
+                <div class="gamepad-status" id="menu-gamepad-indicator">
+                    <span class="icon">🎮</span> Gamepad Desconectado
+                </div>
+            </div>
+
+            <!-- TELA DE REGISTRO DO PILOTO -->
+            <div id="pilot-screen" class="menu-card">
+                <h2>REGISTRO DE PILOTO</h2>
+                <p class="description">Identifique-se para salvar seu progresso no banco de dados da Frota Estelar.</p>
+
+                <form id="pilot-form" onsubmit="event.preventDefault();">
+                    <div class="form-group">
+                        <label for="pilot-name">NOME DO PILOTO:</label>
+                        <input type="text" id="pilot-name" maxlength="15" placeholder="Commander Shepard" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>COR DA ASSINATURA DA NAVE:</label>
+                        <div class="color-picker-container">
+                            <div class="color-option active" data-color="#00ffcc" style="background-color: #00ffcc;"></div>
+                            <div class="color-option" data-color="#ff0055" style="background-color: #ff0055;"></div>
+                            <div class="color-option" data-color="#0099ff" style="background-color: #0099ff;"></div>
+                            <div class="color-option" data-color="#ffcc00" style="background-color: #ffcc00;"></div>
+                            <div class="color-option" data-color="#cc00ff" style="background-color: #cc00ff;"></div>
+                        </div>
+                    </div>
+
+                    <div class="menu-buttons">
+                        <button type="submit" id="btn-save-pilot" class="btn btn-primary">REGISTRAR & SALVAR</button>
+                        <button type="button" id="btn-back-pilot" class="btn btn-secondary">VOLTAR</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- TELA DE SELEÇÃO DE SETOR / FASE -->
+            <div id="sector-screen" class="menu-card">
+                <h2>SELETOR DE SETOR</h2>
+                <p class="description">Escolha a zona de combate hiperespacial liberada.</p>
+
+                <div class="sectors-grid" id="sectors-grid">
+                    <!-- Gerado via JavaScript dinamicamente (12 fases) -->
+                </div>
+
+                <div class="menu-buttons" style="margin-top: 20px;">
+                    <button id="btn-back-sectors" class="btn btn-secondary">VOLTAR AO MENU</button>
+                </div>
+            </div>
+
+            <!-- TELA DE MANUAL DE VÔO -->
+            <div id="instructions-screen" class="menu-card">
+                <h2>MANUAL DE OPERAÇÕES</h2>
+                <div class="instructions-content">
+                    <div class="instruction-group">
+                        <h3>⌨️ TECLADO E MOUSE</h3>
+                        <ul>
+                            <li><strong>W / Seta Acima:</strong> Propulsor (Acelerar)</li>
+                            <li><strong>A, D / Seta Esquerda, Direita:</strong> Rotacionar Nave</li>
+                            <li><strong>ESPAÇO:</strong> Disparar Canhão Principal</li>
+                            <li><strong>SHIFT / Botão Direito:</strong> Escudo Especial / Habilidade</li>
+                            <li><strong>E / R:</strong> Mudar de Arma</li>
+                            <li><strong>ESC / P:</strong> Pausar Jogo</li>
+                        </ul>
+                    </div>
+                    <div class="instruction-group">
+                        <h3>🎮 CONTROLE XBOX / PLAYSTATION</h3>
+                        <ul>
+                            <li><strong>Analógico Esquerdo / D-pad:</strong> Rotacionar Nave e Navegar</li>
+                            <li><strong>Gatilho Direito (RT) / Botão A:</strong> Propulsor (Aceleração Dinâmica!)</li>
+                            <li><strong>Gatilho Esquerdo (LT) / Botão X:</strong> Disparar Arma</li>
+                            <li><strong>Botão B / Y:</strong> Escudo Especial / Habilidade</li>
+                            <li><strong>LB / RB:</strong> Alternar Armas</li>
+                            <li><strong>START:</strong> Pausar</li>
+                        </ul>
+                    </div>
+                    <div class="instruction-group">
+                        <h3>☄️ REGRAS E DICAS</h3>
+                        <ul>
+                            <li>Destrua todos os asteroides e naves inimigas do setor para avançar.</li>
+                            <li>A cada 3 fases, um <strong>Super-Chefão</strong> com pontos fracos surge.</li>
+                            <li>Cuidado com as <strong>Anomalias Gravitacionais</strong> (Buracos Negros)!</li>
+                            <li>Colete <strong>Sucata Estelar (⚡)</strong> para comprar upgrades permanentes.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="menu-buttons">
+                    <button id="btn-back-instructions" class="btn btn-secondary">ENTENDIDO</button>
+                </div>
+            </div>
+
+            <!-- TELA DE LOJA DE UPGRADES -->
+            <div id="upgrades-screen" class="menu-card">
+                <h2>CENTRAL DE UPGRADES</h2>
+                <p class="description">Aprimore os sistemas de bordo usando a Sucata Coletada.</p>
+
+                <div class="scraps-counter">
+                    SUCATA DISPONÍVEL: <span id="scraps-total">0</span> ⚡
+                </div>
+
+                <div class="upgrades-list">
+                    <!-- Canhão Principal -->
+                    <div class="upgrade-item" data-upgrade="weapon">
+                        <div class="upgrade-info">
+                            <span class="upgrade-title">Canhão Principal (Dano/Dispersão)</span>
+                            <span class="upgrade-desc">Aumenta o dano, cadência de tiro e desbloqueia o disparo triplo (Nível 3+).</span>
+                        </div>
+                        <div class="upgrade-action">
+                            <span class="upgrade-level" id="level-weapon">Nív 1</span>
+                            <button class="btn btn-upgrade" id="btn-upgrade-weapon">UPGRADE <br><span class="cost" id="cost-weapon">100</span> ⚡</button>
+                        </div>
+                    </div>
+
+                    <!-- Escudos -->
+                    <div class="upgrade-item" data-upgrade="shield">
+                        <div class="upgrade-info">
+                            <span class="upgrade-title">Escudo Defletor (Resistência)</span>
+                            <span class="upgrade-desc">Aumenta o máximo do escudo e reduz o tempo de recarga após ser atingido.</span>
+                        </div>
+                        <div class="upgrade-action">
+                            <span class="upgrade-level" id="level-shield">Nív 1</span>
+                            <button class="btn btn-upgrade" id="btn-upgrade-shield">UPGRADE <br><span class="cost" id="cost-shield">150</span> ⚡</button>
+                        </div>
+                    </div>
+
+                    <!-- Motor (Manobrabilidade) -->
+                    <div class="upgrade-item" data-upgrade="engine">
+                        <div class="upgrade-info">
+                            <span class="upgrade-title">Propulsores Iônicos (Velocidade)</span>
+                            <span class="upgrade-desc">Melhora a aceleração máxima e velocidade de rotação da nave.</span>
+                        </div>
+                        <div class="upgrade-action">
+                            <span class="upgrade-level" id="level-engine">Nív 1</span>
+                            <button class="btn btn-upgrade" id="btn-upgrade-engine">UPGRADE <br><span class="cost" id="cost-engine">80</span> ⚡</button>
+                        </div>
+                    </div>
+
+                    <!-- Nave Auxiliar Drone NPC -->
+                    <div class="upgrade-item" data-upgrade="drone">
+                        <div class="upgrade-info">
+                            <span class="upgrade-title">Nave Auxiliar Drone (NPC)</span>
+                            <span class="upgrade-desc">Desbloqueia e aprimora um drone assistente com canhão laser automático.</span>
+                        </div>
+                        <div class="upgrade-action">
+                            <span class="upgrade-level" id="level-drone">Bloqueado</span>
+                            <button class="btn btn-upgrade" id="btn-upgrade-drone">UPGRADE <br><span class="cost" id="cost-drone">300</span> ⚡</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="menu-buttons" style="margin-top: 20px;">
+                    <button id="btn-reset-upgrades" class="btn btn-danger" style="font-size: 11px; padding: 6px 12px;">RESETAR UPGRADES</button>
+                    <button id="btn-back-upgrades" class="btn btn-secondary">VOLTAR</button>
+                </div>
+            </div>
+
+            <!-- TELA DE PAUSA -->
+            <div id="pause-screen" class="menu-card">
+                <h2>SISTEMAS EM PAUSA</h2>
+                <p class="description">Simulação orbital suspensa temporariamente.</p>
+                <div class="menu-buttons">
+                    <button id="btn-resume" class="btn btn-primary">RETOMAR JOGO</button>
+                    <button id="btn-restart" class="btn btn-secondary">REINICIAR FAZE</button>
+                    <button id="btn-quit" class="btn btn-danger">SAIR PARA O MENU</button>
+                </div>
+            </div>
+
+            <!-- TELA DE VIAGEM HIPERESPACIAL (WARP LEVEL TRANSITION) -->
+            <div id="warp-screen" class="menu-card">
+                <h1 class="warp-title">SALTO HIPERESPACIAL...</h1>
+                <div class="warp-details">
+                    <p>TRANSLADANDO PILOTO PARA O PRÓXIMO SETOR</p>
+                    <h2 id="warp-next-sector">SETOR 02</h2>
+                    <p class="scraps-gain">Sucata Obtida: <span id="warp-scraps-gain">0</span> ⚡</p>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar-fill" id="warp-progress"></div>
+                </div>
+            </div>
+
+            <!-- TELA DE VITÓRIA FINAL -->
+            <div id="victory-screen" class="menu-card">
+                <h1 class="victory-title">HERÓI DO VAZIO!</h1>
+                <p class="description">Você limpou com sucesso todos os 12 setores e derrotou a ameaça robótica alienígena.</p>
+
+                <div class="pilot-stats-card">
+                    <p>Nome do Piloto: <span id="victory-pilot-name" class="highlight">Commander</span></p>
+                    <p>Pontuação Final: <span id="victory-score" class="highlight">99,999</span></p>
+                    <p>Sucata Acumulada: <span id="victory-scraps" class="highlight">500</span></p>
+                </div>
+
+                <div class="menu-buttons">
+                    <button id="btn-victory-continue" class="btn btn-primary">RETORNAR À CENTRAL</button>
+                </div>
+            </div>
+
+            <!-- TELA DE GAME OVER -->
+            <div id="gameover-screen" class="menu-card">
+                <h1 class="gameover-title">NAVE DESTRUÍDA</h1>
+                <p class="description">Seu sinal foi perdido na imensidão fria do espaço.</p>
+
+                <div class="pilot-stats-card">
+                    <p>Fase Alcançada: <span id="gameover-sector" class="highlight">Setor 1</span></p>
+                    <p>Pontuação: <span id="gameover-score" class="highlight">0</span></p>
+                </div>
+
+                <div class="menu-buttons">
+                    <button id="btn-retry" class="btn btn-primary">TENTAR NOVAMENTE</button>
+                    <button id="btn-gameover-upgrades" class="btn btn-secondary">LOJA DE UPGRADES</button>
+                    <button id="btn-gameover-menu" class="btn btn-danger">SAIR PARA O MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- HUD DO JOGO (ATIVA APENAS DURANTE O JOGO) -->
+        <div id="hud-overlay" style="display: none;">
+            <div class="hud-top">
+                <div class="hud-group">
+                    <span class="hud-label">PILOTO</span>
+                    <span id="hud-pilot-name" class="hud-value neon-blue">GUEST</span>
+                </div>
+                <div class="hud-group text-center">
+                    <span class="hud-label">SCORE</span>
+                    <span id="hud-score" class="hud-value neon-green">000000</span>
+                </div>
+                <div class="hud-group text-right">
+                    <span class="hud-label">SETOR</span>
+                    <span id="hud-sector" class="hud-value neon-orange">01 / 12</span>
+                </div>
+            </div>
+
+            <!-- Barras HUD na parte inferior (Escudo, Especial, Vida, Drone Status) -->
+            <div class="hud-bottom">
+                <div class="hud-bars-container">
+                    <!-- Escudo -->
+                    <div class="hud-bar-row">
+                        <span class="bar-label">ESCUDO Defletor</span>
+                        <div class="bar-outer border-cyan">
+                            <div id="hud-shield-bar" class="bar-inner bg-cyan" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    <!-- Sobrecarga / Energia do Especial -->
+                    <div class="hud-bar-row">
+                        <span class="bar-label">ARMA: <span id="hud-weapon-name" style="color: #ff9900;">LASER</span></span>
+                        <div class="bar-outer border-orange">
+                            <div id="hud-energy-bar" class="bar-inner bg-orange" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hud-scraps-lives">
+                    <div class="hud-stat-item">
+                        <span class="hud-label-small">SUCATA (⚡)</span>
+                        <span id="hud-scraps" class="hud-value-small">0</span>
+                    </div>
+                    <div class="hud-stat-item">
+                        <span class="hud-label-small">VIDAS</span>
+                        <span id="hud-lives" class="hud-value-small">💖 💖 💖</span>
+                    </div>
+                    <div class="hud-stat-item" id="hud-drone-status" style="opacity: 0.5;">
+                        <span class="hud-label-small">DRONE</span>
+                        <span id="hud-drone-text" class="hud-value-small">BLOQUEADO</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indicador Central de Alerta / Boss -->
+            <div id="boss-hud-container" style="display: none;">
+                <div class="boss-title-container">
+                    <span id="boss-alert-text">DETECÇÃO DE AMEAÇA CLASSE S</span>
+                    <span id="boss-name-text">LEVIATÃ DO VAZIO</span>
+                </div>
+                <div class="bar-outer border-red" style="width: 80%; max-width: 600px; margin: 5px auto;">
+                    <div id="hud-boss-bar" class="bar-inner bg-red" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <!-- Aviso Rápido de Salto Pronto / Próxima Wave -->
+            <div id="alert-banner" class="alert-banner" style="display: none;">
+                FASE CONCLUÍDA! PRESSIONE 'W' PARA INICIAR SALTO DE VIAGEM
+            </div>
+        </div>
+
+        <!-- CONTROLES MOBILE / TOUCH VIRTUAIS (Detectado se touch for suportado) -->
+        <div id="mobile-controls" style="display: none;">
+            <div class="mobile-dpad">
+                <button id="touch-left" class="touch-btn">◀</button>
+                <button id="touch-thrust" class="touch-btn">▲</button>
+                <button id="touch-right" class="touch-btn">▶</button>
+            </div>
+            <div class="mobile-actions">
+                <button id="touch-fire" class="touch-btn action-btn">DISPARAR</button>
+                <button id="touch-special" class="touch-btn action-btn special-btn">ESCUDO</button>
+                <button id="touch-pause" class="touch-btn action-btn pause-btn">⏸</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts do Jogo -->
+    <script src="audio.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

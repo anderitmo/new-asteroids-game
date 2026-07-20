@@ -1,0 +1,897 @@
+/* ==========================================================================
+   RESET & CONFIGURAÇÕES BASE
+   ========================================================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #03030c;
+    color: #e2e8f0;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+/* ==========================================================================
+   CONTAINER DO JOGO & CANVAS
+   ========================================================================== */
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: radial-gradient(circle, #09091e 0%, #03030c 100%);
+}
+
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    display: block;
+}
+
+/* Efeito CRT Retro-Futurista */
+.crt-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 4px, 6px 100%;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0.85;
+}
+
+/* ==========================================================================
+   INTERFACES DE MENUS (UI OVERLAY)
+   ========================================================================== */
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    padding: 20px;
+    background: rgba(4, 4, 15, 0.6);
+    backdrop-filter: blur(10px);
+    transition: opacity 0.5s ease;
+}
+
+.menu-card {
+    background: rgba(10, 10, 32, 0.75);
+    border: 2px solid #00ffcc;
+    border-radius: 12px;
+    padding: 40px;
+    width: 100%;
+    max-width: 650px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0, 255, 204, 0.2), inset 0 0 15px rgba(0, 255, 204, 0.05);
+    display: none;
+    flex-direction: column;
+    animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.menu-card.active {
+    display: flex;
+}
+
+@keyframes scaleUp {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Títulos & Textos */
+.game-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 3.5rem;
+    font-weight: 900;
+    letter-spacing: 6px;
+    line-height: 1.1;
+    color: #ffffff;
+    text-shadow: 0 0 10px rgba(0, 255, 204, 0.8), 0 0 30px rgba(0, 255, 204, 0.4);
+    margin-bottom: 5px;
+}
+
+.game-title .subtitle {
+    color: #00ffcc;
+    font-size: 1.8rem;
+    letter-spacing: 12px;
+    text-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+}
+
+.tagline {
+    font-size: 1.1rem;
+    color: #a0aec0;
+    letter-spacing: 2px;
+    margin-bottom: 30px;
+}
+
+.description {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #cbd5e1;
+    margin-bottom: 25px;
+}
+
+/* Botões Modernos */
+.menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.btn {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 14px 28px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.btn-primary {
+    background: #00ffcc;
+    color: #03030c;
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+}
+
+.btn-primary:hover {
+    background: #ffffff;
+    color: #03030c;
+    box-shadow: 0 0 25px rgba(255, 255, 255, 0.8);
+    transform: translateY(-2px);
+}
+
+.btn-secondary {
+    background: transparent;
+    border-color: #4a5568;
+    color: #cbd5e1;
+}
+
+.btn-secondary:hover {
+    border-color: #00ffcc;
+    color: #ffffff;
+    background: rgba(0, 255, 204, 0.05);
+    box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background: transparent;
+    border-color: #ff0055;
+    color: #ff0055;
+}
+
+.btn-danger:hover {
+    background: #ff0055;
+    color: #ffffff;
+    box-shadow: 0 0 15px rgba(255, 0, 85, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Piloto Badge e Configuração */
+.pilot-badge-display {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(0, 255, 204, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 25px;
+    font-size: 0.95rem;
+}
+
+.pilot-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.pilot-info-row:last-child {
+    margin-bottom: 0;
+}
+
+.pilot-info-row .label {
+    color: #718096;
+}
+
+.pilot-info-row .value {
+    font-weight: bold;
+    color: #00ffcc;
+    text-shadow: 0 0 5px rgba(0, 255, 204, 0.5);
+}
+
+/* Formulário de Registro */
+.form-group {
+    text-align: left;
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    color: #cbd5e1;
+}
+
+.form-group input[type="text"] {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid #4a5568;
+    border-radius: 6px;
+    padding: 12px;
+    color: #ffffff;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+    transition: all 0.3s;
+}
+
+.form-group input[type="text"]:focus {
+    border-color: #00ffcc;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+    outline: none;
+}
+
+.color-picker-container {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.color-option {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.2s;
+}
+
+.color-option:hover {
+    transform: scale(1.15);
+}
+
+.color-option.active {
+    border-color: #ffffff;
+    box-shadow: 0 0 10px #ffffff;
+}
+
+/* Grid de Setores (Seletor de Fase) */
+.sectors-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+/* Custom Scrollbar */
+.sectors-grid::-webkit-scrollbar {
+    width: 5px;
+}
+.sectors-grid::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+.sectors-grid::-webkit-scrollbar-thumb {
+    background: #00ffcc;
+    border-radius: 3px;
+}
+
+.sector-node {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid #2d3748;
+    border-radius: 6px;
+    padding: 15px 10px;
+    cursor: pointer;
+    font-family: 'Orbitron', sans-serif;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.sector-node.locked {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: rgba(0,0,0,0.5);
+}
+
+.sector-node.locked::after {
+    content: "🔒";
+    position: absolute;
+    font-size: 12px;
+    bottom: 5px;
+    right: 5px;
+}
+
+.sector-node:not(.locked):hover {
+    background: rgba(0, 255, 204, 0.08);
+    border-color: #00ffcc;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.2);
+    transform: translateY(-2px);
+}
+
+.sector-node.completed {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.05);
+}
+
+.sector-node.completed::after {
+    content: "✔";
+    position: absolute;
+    font-size: 10px;
+    color: #10b981;
+    bottom: 5px;
+    right: 5px;
+}
+
+.sector-node .num {
+    display: block;
+    font-size: 1.1rem;
+    font-weight: 900;
+}
+
+.sector-node .label {
+    display: block;
+    font-size: 0.65rem;
+    color: #a0aec0;
+    margin-top: 3px;
+}
+
+/* Manual de Vôo */
+.instructions-content {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    text-align: left;
+    max-height: 350px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.instructions-content::-webkit-scrollbar {
+    width: 5px;
+}
+.instructions-content::-webkit-scrollbar-thumb {
+    background: #00ffcc;
+    border-radius: 3px;
+}
+
+.instruction-group {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.instruction-group h3 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+    color: #00ffcc;
+    letter-spacing: 1px;
+}
+
+.instruction-group ul {
+    list-style: none;
+}
+
+.instruction-group li {
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    line-height: 1.4;
+    color: #cbd5e1;
+}
+
+.instruction-group li strong {
+    color: #ffffff;
+}
+
+/* Central de Upgrades */
+.scraps-counter {
+    background: rgba(0, 255, 204, 0.05);
+    border: 1px solid rgba(0, 255, 204, 0.2);
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 1.1rem;
+    color: #00ffcc;
+    font-weight: bold;
+    text-shadow: 0 0 5px rgba(0, 255, 204, 0.4);
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+.upgrades-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.upgrades-list::-webkit-scrollbar {
+    width: 5px;
+}
+.upgrades-list::-webkit-scrollbar-thumb {
+    background: #00ffcc;
+    border-radius: 3px;
+}
+
+.upgrade-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}
+
+.upgrade-info {
+    flex: 1;
+    margin-right: 15px;
+}
+
+.upgrade-title {
+    display: block;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.upgrade-desc {
+    display: block;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    line-height: 1.3;
+}
+
+.upgrade-action {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.upgrade-level {
+    font-size: 0.8rem;
+    color: #00ffcc;
+    font-weight: bold;
+}
+
+.btn-upgrade {
+    padding: 8px 15px;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    background: rgba(0, 255, 204, 0.1);
+    border: 1px solid #00ffcc;
+    color: #00ffcc;
+    border-radius: 4px;
+    min-width: 100px;
+}
+
+.btn-upgrade:hover:not(:disabled) {
+    background: #00ffcc;
+    color: #03030c;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+}
+
+.btn-upgrade:disabled {
+    opacity: 0.3;
+    border-color: #4a5568;
+    color: #718096;
+    cursor: not-allowed;
+}
+
+.btn-upgrade .cost {
+    font-weight: bold;
+}
+
+/* Indicador de Status de Gamepad */
+.gamepad-status {
+    margin-top: 25px;
+    font-size: 0.8rem;
+    color: #718096;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.gamepad-status.connected {
+    color: #00ffcc;
+    text-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+}
+
+/* Warp Screen (Transição Hiperespacial) */
+.warp-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 5px;
+    color: #00ffcc;
+    text-shadow: 0 0 10px rgba(0,255,204,0.6);
+    margin-bottom: 15px;
+    animation: pulseGlow 1.5s infinite;
+}
+
+.warp-details {
+    margin: 20px 0;
+}
+
+.scraps-gain {
+    font-size: 1.1rem;
+    color: #ff9900;
+    margin-top: 10px;
+}
+
+.progress-bar-container {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(0, 255, 204, 0.2);
+    border-radius: 20px;
+    height: 12px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.progress-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #00ffcc, #0099ff);
+    box-shadow: 0 0 10px #00ffcc;
+    border-radius: 20px;
+    transition: width 0.1s linear;
+}
+
+@keyframes pulseGlow {
+    0% { opacity: 0.7; text-shadow: 0 0 10px rgba(0,255,204,0.4); }
+    50% { opacity: 1; text-shadow: 0 0 20px rgba(0,255,204,0.8); }
+    100% { opacity: 0.7; text-shadow: 0 0 10px rgba(0,255,204,0.4); }
+}
+
+/* ==========================================================================
+   HUD DO JOGO
+   ========================================================================== */
+#hud-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px 30px;
+    font-family: 'Orbitron', sans-serif;
+}
+
+.hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hud-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.hud-label {
+    font-size: 0.7rem;
+    color: #64748b;
+    letter-spacing: 2px;
+    margin-bottom: 2px;
+}
+
+.hud-value {
+    font-size: 1.3rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+/* Cores Neon HUD */
+.neon-blue {
+    color: #00ffff;
+    text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
+}
+.neon-green {
+    color: #10b981;
+    text-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+.neon-orange {
+    color: #f59e0b;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.hud-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.hud-bars-container {
+    width: 40%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.hud-bar-row {
+    display: flex;
+    flex-direction: column;
+}
+
+.bar-label {
+    font-size: 0.65rem;
+    color: #cbd5e1;
+    letter-spacing: 1px;
+    margin-bottom: 3px;
+    text-transform: uppercase;
+}
+
+.bar-outer {
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid #4a5568;
+    height: 10px;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.border-cyan { border-color: #00ffff; }
+.border-orange { border-color: #ff9900; }
+.border-red { border-color: #ff0055; }
+
+.bar-inner {
+    height: 100%;
+    transition: width 0.15s ease-out;
+}
+
+.bg-cyan {
+    background: linear-gradient(90deg, #0099ff, #00ffff);
+    box-shadow: 0 0 8px #00ffff;
+}
+
+.bg-orange {
+    background: linear-gradient(90deg, #ff5500, #ffaa00);
+    box-shadow: 0 0 8px #ffaa00;
+}
+
+.bg-red {
+    background: linear-gradient(90deg, #880022, #ff0055);
+    box-shadow: 0 0 8px #ff0055;
+}
+
+.hud-scraps-lives {
+    display: flex;
+    gap: 30px;
+    background: rgba(10, 10, 32, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 10px 20px;
+    backdrop-filter: blur(5px);
+}
+
+.hud-stat-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.hud-label-small {
+    font-size: 0.6rem;
+    color: #64748b;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+}
+
+.hud-value-small {
+    font-size: 0.95rem;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* Alerta de Boss */
+#boss-hud-container {
+    width: 100%;
+    text-align: center;
+    position: absolute;
+    top: 90px;
+    left: 0;
+    animation: blinkAlert 1s infinite alternate;
+}
+
+.boss-title-container {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 5px;
+}
+
+#boss-alert-text {
+    font-size: 0.75rem;
+    color: #ff0055;
+    letter-spacing: 3px;
+    font-weight: 900;
+}
+
+#boss-name-text {
+    font-size: 1.4rem;
+    color: #ffffff;
+    letter-spacing: 4px;
+    font-weight: 900;
+    text-shadow: 0 0 10px rgba(255, 0, 85, 0.8);
+}
+
+@keyframes blinkAlert {
+    0% { opacity: 0.85; }
+    100% { opacity: 1; }
+}
+
+/* Banner de Aviso de Salto */
+.alert-banner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 255, 204, 0.1);
+    border: 1px solid #00ffcc;
+    border-radius: 8px;
+    padding: 15px 30px;
+    font-size: 1rem;
+    color: #00ffcc;
+    letter-spacing: 2px;
+    text-align: center;
+    box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+    animation: scalePulse 1.2s infinite ease-in-out;
+}
+
+@keyframes scalePulse {
+    0% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.8; }
+    50% { transform: translate(-50%, -50%) scale(1.03); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.95); opacity: 0.8; }
+}
+
+/* ==========================================================================
+   CONTROLES MOBILE
+   ========================================================================== */
+#mobile-controls {
+    position: absolute;
+    bottom: 20px;
+    left: 0;
+    width: 100%;
+    padding: 0 25px;
+    display: none;
+    justify-content: space-between;
+    align-items: flex-end;
+    pointer-events: none;
+    z-index: 60;
+}
+
+.mobile-dpad, .mobile-actions {
+    display: flex;
+    gap: 15px;
+    pointer-events: auto;
+}
+
+.touch-btn {
+    width: 60px;
+    height: 60px;
+    background: rgba(10, 10, 32, 0.6);
+    border: 1px solid rgba(0, 255, 204, 0.3);
+    color: #ffffff;
+    border-radius: 50%;
+    font-size: 1.4rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    backdrop-filter: blur(5px);
+    transition: transform 0.1s, background 0.1s;
+}
+
+.touch-btn:active {
+    background: rgba(0, 255, 204, 0.2);
+    transform: scale(0.92);
+}
+
+.action-btn {
+    width: 75px;
+    height: 60px;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+.special-btn {
+    border-color: #ffaa00;
+}
+.special-btn:active {
+    background: rgba(255, 170, 0, 0.2);
+}
+
+.pause-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    font-size: 1rem;
+    border-color: #ff0055;
+}
+.pause-btn:active {
+    background: rgba(255, 0, 85, 0.2);
+}
+
+/* Responsivo para Telas Pequenas */
+@media (max-width: 768px) {
+    .menu-card {
+        padding: 20px;
+        max-width: 90%;
+    }
+    .game-title {
+        font-size: 2.2rem;
+    }
+    .game-title .subtitle {
+        font-size: 1.2rem;
+        letter-spacing: 6px;
+    }
+    .sectors-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    #hud-overlay {
+        padding: 10px 15px;
+    }
+    .hud-value {
+        font-size: 1rem;
+    }
+    .hud-bars-container {
+        width: 50%;
+    }
+    .hud-scraps-lives {
+        gap: 15px;
+        padding: 5px 10px;
+    }
+    .hud-value-small {
+        font-size: 0.8rem;
+    }
+}
