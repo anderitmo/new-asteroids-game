@@ -137,12 +137,53 @@ body, html {
     margin-bottom: 25px;
 }
 
+/* Seletor de Velocidade */
+.speed-selector-container {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(0, 255, 204, 0.15);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.speed-selector-container label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.75rem;
+    color: #a0aec0;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.speed-control-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.speed-label {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #00ffcc;
+    text-shadow: 0 0 5px rgba(0, 255, 204, 0.4);
+    min-width: 120px;
+}
+
+.speed-control-row input[type="range"] {
+    flex: 1;
+    cursor: pointer;
+    accent-color: #00ffcc;
+}
+
 /* Botões Modernos */
 .menu-buttons {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 .btn {
@@ -524,7 +565,7 @@ body, html {
 
 /* Indicador de Status de Gamepad */
 .gamepad-status {
-    margin-top: 25px;
+    margin-top: 15px;
     font-size: 0.8rem;
     color: #718096;
     display: flex;

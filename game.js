@@ -49,7 +49,8 @@ let gameState = {
     screenShake: 0,
     gamepadConnected: false,
     gamepadIndex: null,
-    lastTime: 0
+    lastTime: 0,
+    universeSpeedMultiplier: 1.0 // Multiplicador de velocidade inicial ajustável pelo jogador!
 };
 
 // Listas de Objetos Ativos no Jogo
@@ -93,6 +94,7 @@ window.addEventListener("DOMContentLoaded", () => {
     setupMenuNavigation();
     setupInputListeners();
     setupGamepadListeners();
+    setupUniverseSpeedSelector();
     generateSectorGrid();
     updateMenuPilotBadge();
 
@@ -122,6 +124,46 @@ function resizeCanvas() {
 // Obter escala de escala para converter coordenadas virtuais (1920x1080) em coordenadas reais
 function getScaleFactor() {
     return Math.min(canvas.width / GAME_CONFIG.canvasWidth, canvas.height / GAME_CONFIG.canvasHeight);
+}
+
+// Configurar seletor de velocidade inicial
+function setupUniverseSpeedSelector() {
+    const range = document.getElementById("speed-range");
+    const label = document.getElementById("speed-label-text");
+    if (range && label) {
+        // Carregar valor salvo se houver
+        const savedSpeed = localStorage.getItem("asteroids_neonvoid_speed_mult");
+        if (savedSpeed) {
+            gameState.universeSpeedMultiplier = parseFloat(savedSpeed);
+            range.value = savedSpeed;
+            updateSpeedLabel(gameState.universeSpeedMultiplier);
+        }
+
+        range.addEventListener("input", (e) => {
+            const val = parseFloat(e.target.value);
+            gameState.universeSpeedMultiplier = val;
+            localStorage.setItem("asteroids_neonvoid_speed_mult", val);
+            updateSpeedLabel(val);
+        });
+    }
+}
+
+function updateSpeedLabel(val) {
+    const label = document.getElementById("speed-label-text");
+    if (!label) return;
+    if (val === 1.0) {
+        label.textContent = "1.0x (Normal)";
+        label.style.color = "#00ffcc";
+    } else if (val < 1.0) {
+        label.textContent = `${val.toFixed(2)}x (Lento)`;
+        label.style.color = "#0099ff";
+    } else if (val > 1.5) {
+        label.textContent = `${val.toFixed(2)}x (EXTREMO!)`;
+        label.style.color = "#ff0055";
+    } else {
+        label.textContent = `${val.toFixed(2)}x (Rápido)`;
+        label.style.color = "#ffcc00";
+    }
 }
 
 // ==========================================================================
@@ -567,9 +609,9 @@ function startSector(sectorNum) {
     // Gerar elementos com base na fase específica
     setupSectorLayout(sectorNum);
 
-    // Reiniciar música ambiente
+    // Reiniciar música ambiente carregando com base na fase atual!
     SFX.stopAmbientMusic();
-    SFX.startAmbientMusic();
+    SFX.startAmbientMusic(sectorNum);
 
     updateHUD();
 }
@@ -620,7 +662,7 @@ function togglePause() {
         screenPause.classList.add("active");
     } else {
         uiOverlay.style.display = "none";
-        SFX.startAmbientMusic();
+        SFX.startAmbientMusic(pilotData.currentSector);
     }
 }
 
@@ -637,7 +679,8 @@ function gameLoop(timestamp) {
     pollGamepad();
 
     if (gameState.active && !gameState.paused) {
-        update(dt);
+        // Multiplicador de velocidade inicial do universo aplicado ao dt!
+        update(dt * gameState.universeSpeedMultiplier);
     }
 
     draw();
@@ -1850,7 +1893,7 @@ class SectorBoss {
     fireSpecialAttack() {
         this.specialCooldown = 6.0;
 
-        // Ataques temáticos surpresas 'fora da caixa'
+        // Attacks temáticos surpresas 'fora da caixa'
         if (this.bossType === 1) {
             // Boss 1: Invocar 3 naves caças rápidas assistentes de escolta
             for (let i = 0; i < 3; i++) {

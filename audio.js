@@ -14,8 +14,18 @@ class SoundEngine {
         this.sfxVolume = null;
         this.muted = false;
 
-        // Frequências para notas da música procedimental baseada em arpejos sci-fi
-        this.scale = [110.00, 130.81, 146.83, 164.81, 196.00, 220.00, 261.63, 293.66, 329.63, 392.00]; // Escala Pentatônica de Lá Menor
+        // Escalas diferentes para cada tipo de setor para dar sensação de músicas diferentes
+        this.musicScales = {
+            // Escala Pentatônica de Lá Menor (Grave, Misteriosa) - Fases 1, 2, 3
+            mysterious: [110.00, 130.81, 146.83, 164.81, 196.00, 220.00, 261.63, 293.66],
+            // Escala de Frígio Dominante (Tensa, Árabe Sci-fi) - Fases 4, 5, 6
+            tense: [110.00, 116.54, 138.59, 146.83, 164.81, 174.61, 207.65, 220.00],
+            // Escala de Dó Lídio (Espacial, Etérea) - Fases 7, 8, 9
+            ethereal: [130.81, 146.83, 164.81, 185.00, 196.00, 220.00, 246.94, 261.63],
+            // Escala de Tons Inteiros / Hexafônica (Alienígena, Futurista Extrema) - Fases 10, 11, 12
+            futuristic: [110.00, 123.47, 138.59, 155.56, 174.61, 196.00, 220.00, 246.94]
+        };
+
         this.currentMusicSource = null;
         this.isPlayingMusic = false;
         this.musicIntervalId = null;
@@ -34,9 +44,9 @@ class SoundEngine {
             this.musicVolume = this.ctx.createGain();
             this.sfxVolume = this.ctx.createGain();
 
-            // Configuração dos volumes padrão
+            // Configuração dos volumes padrão (Volume da música levemente mais alto agora!)
             this.masterVolume.gain.setValueAtTime(0.5, this.ctx.currentTime);
-            this.musicVolume.gain.setValueAtTime(0.4, this.ctx.currentTime);
+            this.musicVolume.gain.setValueAtTime(0.75, this.ctx.currentTime); // Aumentado de 0.4 para 0.75!
             this.sfxVolume.gain.setValueAtTime(0.7, this.ctx.currentTime);
 
             // Conexão dos nós de ganho
@@ -434,57 +444,85 @@ class SoundEngine {
 
     /**
      * Inicia a reprodução da música ambiente gerada por algoritmos em tempo real
+     * @param {number} sector - Setor/fase atual para definir qual tipo de música tocar
      */
-    startAmbientMusic() {
+    startAmbientMusic(sector = 1) {
         this.resume();
         if (!this.ctx || this.isPlayingMusic || this.muted) return;
 
         this.isPlayingMusic = true;
         let step = 0;
 
-        // Função interna que gera um padrão melódico sequencial a cada batida (0.35s)
+        // Escolher escala harmônica com base na fase para criar músicas diferentes por setor!
+        let currentScale = this.musicScales.mysterious; // Default
+        let beatInterval = 350; // Tempo padrão entre notas
+        let filterFreqMax = 800; // Tom do sintetizador
+
+        if (sector >= 10) {
+            currentScale = this.musicScales.futuristic;
+            beatInterval = 280; // Música mais rápida e frenética no final!
+            filterFreqMax = 1200;
+        } else if (sector >= 7) {
+            currentScale = this.musicScales.ethereal;
+            beatInterval = 400; // Música mais lenta e viajante nas fases espaciais etéreas
+            filterFreqMax = 600;
+        } else if (sector >= 4) {
+            currentScale = this.musicScales.tense;
+            beatInterval = 320; // Música com andamento tenso e urgente
+            filterFreqMax = 1000;
+        }
+
+        // Função interna que gera um padrão melódico sequencial a cada batida (procedural)
         const playBeep = () => {
             if (!this.isPlayingMusic || this.muted) return;
 
             const time = this.ctx.currentTime;
 
-            // Gerar Baixo Estável de Fundo (Drone Synth Bass) a cada 4 tempos
+            // Gerar Baixo Estável de Fundo (Drone Synth Bass) a cada 8 tempos para preencher o ambiente
             if (step % 8 === 0) {
                 const subOsc = this.ctx.createOscillator();
                 const subGain = this.ctx.createGain();
                 subOsc.type = 'sine';
-                // Escolhe um tom fundamental grave baseado na escala
-                const baseFreq = this.scale[0] / 2; // Oitava abaixo
+                const baseFreq = currentScale[0] / 2; // Oitava abaixo para o Sub-Bass profundo
                 subOsc.frequency.setValueAtTime(baseFreq, time);
 
-                subGain.gain.setValueAtTime(0.12, time);
-                subGain.gain.exponentialRampToValueAtTime(0.001, time + 1.2);
+                subGain.gain.setValueAtTime(0.18, time); // Volume levemente aumentado para impacto
+                subGain.gain.exponentialRampToValueAtTime(0.001, time + 1.5);
 
                 subOsc.connect(subGain);
                 subGain.connect(this.musicVolume);
 
                 subOsc.start(time);
-                subOsc.stop(time + 1.2);
+                subOsc.stop(time + 1.5);
             }
 
-            // Gerar Notas de Arpejo Aleatório
-            const noteIndex = Math.floor(Math.random() * this.scale.length);
-            const freq = this.scale[noteIndex];
+            // Gerar Notas de Arpejo Aleatório baseadas na escala do Setor
+            const noteIndex = Math.floor(Math.random() * currentScale.length);
+            const freq = currentScale[noteIndex];
 
-            // 85% de chance de tocar uma nota no arpejo para manter um ritmo sincopado e espacial
+            // 85% de chance de tocar uma nota no arpejo para manter um ritmo sincopado
             if (Math.random() > 0.15) {
                 const osc = this.ctx.createOscillator();
                 const filter = this.ctx.createBiquadFilter();
                 const gainNode = this.ctx.createGain();
 
-                osc.type = 'triangle';
+                // Tipo de sintetizador muda de acordo com a escala para mudar a textura do som!
+                if (currentScale === this.musicScales.futuristic) {
+                    osc.type = 'sawtooth'; // Som agressivo de serra
+                } else if (currentScale === this.musicScales.ethereal) {
+                    osc.type = 'sine'; // Som puro e suave senoidal
+                } else {
+                    osc.type = 'triangle'; // Som de triângulo quente retro
+                }
+
                 osc.frequency.setValueAtTime(freq, time);
 
                 filter.type = 'lowpass';
-                filter.frequency.setValueAtTime(800, time);
-                filter.frequency.exponentialRampToValueAtTime(200, time + 0.4);
+                filter.frequency.setValueAtTime(filterFreqMax, time);
+                filter.frequency.exponentialRampToValueAtTime(100, time + 0.45);
 
-                gainNode.gain.setValueAtTime(0.05, time);
+                // Volume da música do sintetizador de notas principais aumentado
+                gainNode.gain.setValueAtTime(0.1, time);
                 gainNode.gain.exponentialRampToValueAtTime(0.001, time + 0.5);
 
                 osc.connect(filter);
@@ -498,8 +536,8 @@ class SoundEngine {
             step++;
         };
 
-        // Agenda o loop da música
-        this.musicIntervalId = setInterval(playBeep, 350);
+        // Agenda o loop da música com o intervalo específico daquele setor
+        this.musicIntervalId = setInterval(playBeep, beatInterval);
     }
 
     /**
