@@ -1,6 +1,6 @@
 # ASTEROIDS: NEON VOID - REMAKE ULTRA MODERNO
 
-Bem-vindo ao **Asteroids: Neon Void**, o remake definitivo do clássico jogo de fliperama Asteroids de 1979, refeito do zero usando apenas **HTML5, CSS moderno e JavaScript Vanilla**.
+Bem-vindo ao **Asteroids: Neon Void**, o remake definitivo do clássico jogo de fliperama Asteroids de 1979, refeito do zero usando apenas **HTML5, CSS moderno e JavaScript Vanilla**. 
 
 Este jogo traz um ambiente minimalista, incrivelmente polido com luzes neon vibrantes, efeitos de partículas, simulações de buraco negro baseadas em vetores e um **sintetizador de som sci-fi 100% procedural** integrado via Web Audio API.
 
@@ -10,7 +10,7 @@ Este jogo traz um ambiente minimalista, incrivelmente polido com luzes neon vibr
 
 1. **Sintetizador Procedural de Áudio (Web Audio API)**: O jogo não faz o download de arquivos pesados de áudio (MP3 ou WAV). Toda a trilha sonora espacial arpeggiada, o barulho do propulsor iônico, as explosões dinâmicas que alteram o grave baseadas no tamanho do elemento destruído e o som do disparo laser de plasma são gerados matematicamente na CPU em tempo real!
 2. **Anomalias Gravitacionais (Buracos Negros)**: Em determinados setores, o centro do espaço conterá um buraco negro pulsante com um horizonte de eventos realista. O buraco negro atrai o jogador, inimigos, tiros e detritos com aceleração gravitacional vetorial, gerando uma mecânica orbital tática incrível.
-3. **Múltiplos Tipos de Naves Inimigas**:
+3. **Múltiplos Tipos de Naves Inimigas**: 
    - *Fighter*: Caças rápidos que disparam lasers vermelhos neon diretamente no jogador.
    - *Bomber*: Naves pesadas que plantam minas altamente perigosas no espaço.
    - *Defender*: Encouraçados táticos que usam energia extra e exigem múltiplos impactos.

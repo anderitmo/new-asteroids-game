@@ -23,7 +23,7 @@
             <div id="menu-screen" class="menu-card active">
                 <h1 class="game-title">ASTEROIDS<br><span class="subtitle">NEON VOID</span></h1>
                 <p class="tagline">O Remake Definitivo do Clássico Espacial</p>
-
+                
                 <div class="pilot-badge-display" id="active-pilot-badge" style="display: none;">
                     <div class="pilot-info-row">
                         <span class="label">Piloto Ativo:</span>
@@ -36,6 +36,34 @@
                     <div class="pilot-info-row">
                         <span class="label">Pontos Salvos:</span>
                         <span id="display-pilot-score" class="value">0</span>
+                    </div>
+                </div>
+
+                <!-- Painel de Ajustes de Jogo (Velocidade e Volumes) -->
+                <div class="settings-panel">
+                    <div class="speed-selector-container">
+                        <label for="speed-range">VELOCIDADE INICIAL DO UNIVERSO:</label>
+                        <div class="speed-control-row">
+                            <span class="speed-label" id="speed-label-text">1.0x (Normal)</span>
+                            <input type="range" id="speed-range" min="0.5" max="2.0" step="0.25" value="1.0">
+                        </div>
+                    </div>
+
+                    <div class="audio-selector-container">
+                        <div class="audio-control-row">
+                            <label for="volume-music">MÚSICA DE FUNDO:</label>
+                            <div class="audio-input-row">
+                                <span class="audio-label" id="volume-music-label">75%</span>
+                                <input type="range" id="volume-music" min="0" max="1" step="0.05" value="0.75">
+                            </div>
+                        </div>
+                        <div class="audio-control-row" style="margin-top: 10px;">
+                            <label for="volume-sfx">EFEITOS SONOROS (SFX):</label>
+                            <div class="audio-input-row">
+                                <span class="audio-label" id="volume-sfx-label">70%</span>
+                                <input type="range" id="volume-sfx" min="0" max="1" step="0.05" value="0.70">
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -55,7 +83,7 @@
             <div id="pilot-screen" class="menu-card">
                 <h2>REGISTRO DE PILOTO</h2>
                 <p class="description">Identifique-se para salvar seu progresso no banco de dados da Frota Estelar.</p>
-
+                
                 <form id="pilot-form" onsubmit="event.preventDefault();">
                     <div class="form-group">
                         <label for="pilot-name">NOME DO PILOTO:</label>
@@ -84,7 +112,7 @@
             <div id="sector-screen" class="menu-card">
                 <h2>SELETOR DE SETOR</h2>
                 <p class="description">Escolha a zona de combate hiperespacial liberada.</p>
-
+                
                 <div class="sectors-grid" id="sectors-grid">
                     <!-- Gerado via JavaScript dinamicamente (12 fases) -->
                 </div>
@@ -139,7 +167,7 @@
             <div id="upgrades-screen" class="menu-card">
                 <h2>CENTRAL DE UPGRADES</h2>
                 <p class="description">Aprimore os sistemas de bordo usando a Sucata Coletada.</p>
-
+                
                 <div class="scraps-counter">
                     SUCATA DISPONÍVEL: <span id="scraps-total">0</span> ⚡
                 </div>
@@ -149,11 +177,23 @@
                     <div class="upgrade-item" data-upgrade="weapon">
                         <div class="upgrade-info">
                             <span class="upgrade-title">Canhão Principal (Dano/Dispersão)</span>
-                            <span class="upgrade-desc">Aumenta o dano, cadência de tiro e desbloqueia o disparo triplo (Nível 3+).</span>
+                            <span class="upgrade-desc">Desbloqueia disparos duplos (Nív 2), triplos abertos (Nív 3) e quádruplos em leque (Nív 4).</span>
                         </div>
                         <div class="upgrade-action">
                             <span class="upgrade-level" id="level-weapon">Nív 1</span>
                             <button class="btn btn-upgrade" id="btn-upgrade-weapon">UPGRADE <br><span class="cost" id="cost-weapon">100</span> ⚡</button>
+                        </div>
+                    </div>
+
+                    <!-- Upgrade de Chassi de Nave (Permanente) -->
+                    <div class="upgrade-item" data-upgrade="chassis">
+                        <div class="upgrade-info">
+                            <span class="upgrade-title">Chassi Espacial (Classe de Nave)</span>
+                            <span class="upgrade-desc">Aumenta permanentemente o tamanho da nave, blindagem externa e o escudo total.</span>
+                        </div>
+                        <div class="upgrade-action">
+                            <span class="upgrade-level" id="level-chassis">Nív 1</span>
+                            <button class="btn btn-upgrade" id="btn-upgrade-chassis">UPGRADE <br><span class="cost" id="cost-chassis">200</span> ⚡</button>
                         </div>
                     </div>
 
@@ -228,7 +268,7 @@
             <div id="victory-screen" class="menu-card">
                 <h1 class="victory-title">HERÓI DO VAZIO!</h1>
                 <p class="description">Você limpou com sucesso todos os 12 setores e derrotou a ameaça robótica alienígena.</p>
-
+                
                 <div class="pilot-stats-card">
                     <p>Nome do Piloto: <span id="victory-pilot-name" class="highlight">Commander</span></p>
                     <p>Pontuação Final: <span id="victory-score" class="highlight">99,999</span></p>
@@ -244,7 +284,7 @@
             <div id="gameover-screen" class="menu-card">
                 <h1 class="gameover-title">NAVE DESTRUÍDA</h1>
                 <p class="description">Seu sinal foi perdido na imensidão fria do espaço.</p>
-
+                
                 <div class="pilot-stats-card">
                     <p>Fase Alcançada: <span id="gameover-sector" class="highlight">Setor 1</span></p>
                     <p>Pontuação: <span id="gameover-score" class="highlight">0</span></p>
