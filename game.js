@@ -9,13 +9,14 @@
  * Adicionado pulo de fase via GET pula-fase.
  * Adicionado upgrade permanente de chassi e canhões (Duplo, Triplo, Quádruplo em leque).
  * Adicionados Power-ups temporários ("OVERDRIVE" com chassi gigante dourado e tiro quíntuplo).
+ * Balanceamento: Fases encurtadas (menos ondas de inimigos e menos asteroides iniciais para maior dinamismo).
  */
 
 // ==========================================================================
 // CONFIGURAÇÕES GERAIS E ESTADO DO JOGO
 // ==========================================================================
 const GAME_CONFIG = {
-    version: "1.4.0", // Versão com chassis, armas estendidas e power-ups temporários
+    version: "1.5.0", // Versão com Fases Rápidas e Dinâmicas
     totalSectors: 12,
     baseScrapGain: 15,
     maxUpgrades: 5,
@@ -51,7 +52,7 @@ let gameState = {
     warping: false,
     bossSpawned: false,
     currentWave: 1,
-    totalWaves: 3,
+    totalWaves: 2, // Reduzido de 3 para 2 nas fases normais para encurtar!
     keys: {},
     screenShake: 0,
     gamepadConnected: false,
@@ -664,7 +665,6 @@ function startSector(sectorNum) {
     gameState.scrapsInSector = 0;
     gameState.lives = 3;
     gameState.currentWave = 1;
-    gameState.totalWaves = 3;
     gameState.screenShake = 0;
     gameState.bgTime = 0; // Resetar contador de tempo para animações sutis do fundo
 
@@ -697,8 +697,8 @@ function startSector(sectorNum) {
 }
 
 function setupSectorLayout(sectorNum) {
-    // Configurar dificuldade e wave baseados no setor
-    const numAsteroids = 4 + sectorNum;
+    // Balanceamento: Reduzida a quantidade inicial de asteroides para fases mais curtas e dinâmicas
+    const numAsteroids = 2 + Math.floor(sectorNum * 0.4);
 
     // Inserir Asteroides Iniciais na Wave 1 longe da posição inicial do player (centro)
     for (let i = 0; i < numAsteroids; i++) {
@@ -723,9 +723,9 @@ function setupSectorLayout(sectorNum) {
 
     // Se a fase for de Boss (a cada 3 fases: 3, 6, 9, 12), preparamos o surgimento do boss na wave final
     if (sectorNum % 3 === 0) {
-        gameState.totalWaves = 2; // Menos waves regulares para dar espaço para o Boss
+        gameState.totalWaves = 1; // Boss spawna direto após limpar a Wave 1 rápida!
     } else {
-        gameState.totalWaves = 3;
+        gameState.totalWaves = 2; // Apenas 2 Waves nas fases normais (reduzido de 3)
     }
 }
 
@@ -909,7 +909,7 @@ function checkWaveProgression() {
         // Fase de Boss?
         const isBossSector = pilotData.currentSector % 3 === 0;
 
-        if (isBossSector && gameState.currentWave === gameState.totalWaves - 1 && !gameState.bossSpawned) {
+        if (isBossSector && gameState.currentWave === gameState.totalWaves && !gameState.bossSpawned) {
             spawnSectorBoss();
         } else if (gameState.currentWave < gameState.totalWaves) {
             // Avançar para a próxima wave da fase regular
@@ -924,8 +924,9 @@ function checkWaveProgression() {
 
 function spawnNextWave() {
     const mult = gameState.currentWave;
-    // Spawn de novos asteroides rápidos na nova onda
-    for (let i = 0; i < 3 + mult; i++) {
+    // Spawn de novos asteroides rápidos na nova onda (reduzido para encurtar as ondas!)
+    const numToSpawn = 1 + Math.floor(mult * 0.5);
+    for (let i = 0; i < numToSpawn; i++) {
         let x, y;
         do {
             x = Math.random() * GAME_CONFIG.canvasWidth;
@@ -937,7 +938,7 @@ function spawnNextWave() {
 
     // Spawn de naves inimigas adicionais
     if (pilotData.currentSector >= 2) {
-        for (let i = 0; i < Math.floor(pilotData.currentSector / 3) + 1; i++) {
+        for (let i = 0; i < Math.floor(pilotData.currentSector / 4) + 1; i++) {
             spawnEnemyShip();
         }
     }
@@ -1643,13 +1644,12 @@ class Player {
     }
 
     activateSpecialShield() {
-        this.energy = 0; // Gastar toda a energia
+        this.energy = 0;
         this.invulnerable = true;
-        this.invulnerableTimer = 4.0; // 4 segundos de invencibilidade total reluzente
-        this.shield = this.maxShield; // Recuperar vida do escudo inteiramente
+        this.invulnerableTimer = 4.0;
+        this.shield = this.maxShield;
         SFX.playShieldActive();
 
-        // Expulsar onda de choque que quebra asteroides menores ao redor
         for (let i = 0; i < 40; i++) {
             entities.particles.push(new Particle(this.x, this.y, "#00ffff", "spark"));
         }
@@ -1663,12 +1663,10 @@ class Player {
         gameState.screenShake = 6;
         triggerGamepadVibration(200, 0.4, 0.3);
 
-        // Feedback de impacto luminoso
         for (let i = 0; i < 5; i++) {
             entities.particles.push(new Particle(this.x, this.y, "#ffffff", "spark"));
         }
 
-        // Escudo quebrou totalmente
         if (this.shield <= 0) {
             this.destroyed = true;
             triggerPlayerExplosion();
@@ -1680,13 +1678,12 @@ class Player {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // Definir cor de acordo com status
         let mainColor = pilotData.signatureColor;
         let glowColor = pilotData.signatureColor;
 
         if (this.overdriveActive) {
             mainColor = "#ffffff";
-            glowColor = "#ffcc00"; // Glow dourado no overdrive!
+            glowColor = "#ffcc00";
         }
 
         ctx.shadowBlur = this.overdriveActive ? 30 : 15;
@@ -1698,29 +1695,25 @@ class Player {
 
         ctx.beginPath();
 
-        // Desenho visual elegante e maior com base na classe/upgrade permanente de Chassi!
         if (this.chassisLevel === 1) {
-            // Nível 1: Wedge Clássica e Minimalista
             ctx.moveTo(this.radius, 0);
             ctx.lineTo(-this.radius, -this.radius * 0.8);
             ctx.lineTo(-this.radius * 0.5, 0);
             ctx.lineTo(-this.radius, this.radius * 0.8);
         } else if (this.chassisLevel === 2) {
-            // Nível 2: Heavy Cruiser (Cruzador pesado - Maior com asas laterais adicionais)
             ctx.moveTo(this.radius * 1.1, 0);
             ctx.lineTo(-this.radius * 0.5, -this.radius * 0.6);
-            ctx.lineTo(-this.radius, -this.radius); // Asa estendida
+            ctx.lineTo(-this.radius, -this.radius);
             ctx.lineTo(-this.radius * 0.6, -this.radius * 0.2);
             ctx.lineTo(-this.radius * 0.6, this.radius * 0.2);
-            ctx.lineTo(-this.radius, this.radius); // Asa estendida
+            ctx.lineTo(-this.radius, this.radius);
             ctx.lineTo(-this.radius * 0.5, this.radius * 0.6);
         } else {
-            // Nível 3+: Dreadnought (Nave gigante com asas frontais duplas e canhões integrados)
             ctx.moveTo(this.radius * 1.2, 0);
             ctx.lineTo(this.radius * 0.4, -this.radius * 0.5);
-            ctx.lineTo(-this.radius * 0.2, -this.radius * 1.1); // Asas frontais
+            ctx.lineTo(-this.radius * 0.2, -this.radius * 1.1);
             ctx.lineTo(-this.radius * 0.5, -this.radius * 0.7);
-            ctx.lineTo(-this.radius, -this.radius * 0.7); // Blindagem traseira
+            ctx.lineTo(-this.radius, -this.radius * 0.7);
             ctx.lineTo(-this.radius * 0.6, 0);
             ctx.lineTo(-this.radius, this.radius * 0.7);
             ctx.lineTo(-this.radius * 0.5, this.radius * 0.7);
@@ -1731,7 +1724,6 @@ class Player {
         ctx.fill();
         ctx.stroke();
 
-        // Desenhar núcleo ou cabine reluzente
         ctx.fillStyle = mainColor;
         ctx.beginPath();
         ctx.arc(this.radius * 0.1, 0, 4 + (this.chassisLevel - 1) * 1.2, 0, Math.PI * 2);
@@ -1739,7 +1731,6 @@ class Player {
 
         ctx.restore();
 
-        // Auréola do Escudo Defletor Reluzente ao redor da Nave
         if (this.invulnerable || this.overdriveActive) {
             ctx.save();
             ctx.shadowBlur = 25;
@@ -1775,16 +1766,13 @@ class DroneNPC {
     update(dt) {
         if (!this.parent || this.parent.destroyed) return;
 
-        // Órbita circular suave ao redor da nave do jogador
         this.angle += this.orbitSpeed * dt;
         const targetX = this.parent.x + Math.cos(this.angle) * this.orbitRadius;
         const targetY = this.parent.y + Math.sin(this.angle) * this.orbitRadius;
 
-        // Interpolação suave de posição para efeito de arraste realista
         this.x += (targetX - this.x) * 8 * dt;
         this.y += (targetY - this.y) * 8 * dt;
 
-        // IA de Ataque Autônomo: Mirar no Asteroide ou Inimigo mais próximo
         if (this.shootCooldown > 0) this.shootCooldown -= dt;
 
         if (this.shootCooldown <= 0) {
@@ -1797,9 +1785,8 @@ class DroneNPC {
 
     findNearestTarget() {
         let nearest = null;
-        let minDist = 350; // Limite de alcance sensorial do Drone
+        let minDist = 350;
 
-        // Verificar asteroides
         entities.asteroids.forEach(ast => {
             const d = Math.hypot(ast.x - this.x, ast.y - this.y);
             if (d < minDist) {
@@ -1808,7 +1795,6 @@ class DroneNPC {
             }
         });
 
-        // Verificar naves inimigas prioritariamente
         entities.enemies.forEach(en => {
             const d = Math.hypot(en.x - this.x, en.y - this.y);
             if (d < minDist) {
@@ -1817,7 +1803,6 @@ class DroneNPC {
             }
         });
 
-        // Verificar Boss ativo
         if (entities.boss) {
             const d = Math.hypot(entities.boss.x - this.x, entities.boss.y - this.y);
             if (d < minDist) nearest = entities.boss;
@@ -1828,11 +1813,8 @@ class DroneNPC {
 
     shootAt(target) {
         this.shootCooldown = this.shootRate;
-
-        // Calcular vetor de disparo mirando no alvo
         const fireAngle = Math.atan2(target.y - this.y, target.x - this.x);
 
-        // Tiro ligeiramente menor e azul celeste
         const b = new Bullet(this.x, this.y, fireAngle, 450);
         b.color = "#00ffcc";
         b.radius = 2.5;
@@ -1850,7 +1832,6 @@ class DroneNPC {
         ctx.lineWidth = 1.8;
         ctx.fillStyle = "#03030c";
 
-        // Desenhar forma de triângulo equilátero pequeno futurista
         ctx.beginPath();
         ctx.moveTo(this.radius, 0);
         ctx.lineTo(-this.radius * 0.7, -this.radius * 0.7);
@@ -1874,8 +1855,8 @@ class Bullet {
         this.vy = Math.sin(angle) * speed;
         this.radius = 3.5;
         this.color = "#00ffcc";
-        this.life = 1.2; // Segundos de vida útil para evitar lixo de memória
-        this.damage = 30; // Valor de dano que pode ser alterado pelo chassi/overdrive
+        this.life = 1.2;
+        this.damage = 30;
     }
 
     update(dt) {
@@ -1883,9 +1864,8 @@ class Bullet {
         this.y += this.vy * dt;
         this.life -= dt;
 
-        // Wrap-around opcional para balas ou morte nas bordas
         if (this.x < 0 || this.x > GAME_CONFIG.canvasWidth || this.y < 0 || this.y > GAME_CONFIG.canvasHeight) {
-            this.life = 0; // Forçar destruição rápida nas bordas
+            this.life = 0;
         }
     }
 
@@ -1909,7 +1889,7 @@ class PowerUp {
         this.x = x;
         this.y = y;
         this.radius = 12;
-        this.life = 8.0; // Desaparece em 8 segundos se não coletado
+        this.life = 8.0;
         this.angle = 0;
         this.pulse = 0;
 
@@ -1934,14 +1914,12 @@ class PowerUp {
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
 
-        // Glow dourado brilhante
         ctx.shadowBlur = 15 + Math.sin(this.pulse) * 5;
         ctx.shadowColor = "#ffcc00";
         ctx.strokeStyle = "#ffcc00";
         ctx.lineWidth = 2;
         ctx.fillStyle = "rgba(255, 204, 0, 0.4)";
 
-        // Desenhar cristal giratório octogonal
         ctx.beginPath();
         for (let i = 0; i < 8; i++) {
             const ang = (i / 8) * Math.PI * 2;
@@ -1954,7 +1932,6 @@ class PowerUp {
         ctx.fill();
         ctx.stroke();
 
-        // Centro branco neon
         ctx.fillStyle = "#ffffff";
         ctx.beginPath();
         ctx.arc(0, 0, 4, 0, Math.PI * 2);
@@ -1972,24 +1949,20 @@ class Asteroid {
         this.x = x;
         this.y = y;
         this.radius = radius;
-        this.level = level; // 3: Grande, 2: Médio, 1: Pequeno
+        this.level = level;
         this.hp = level * 20;
 
-        // Direção e velocidade física aleatória
         const speed = 40 + (4 - level) * 20 + Math.random() * 20;
         const angle = Math.random() * Math.PI * 2;
         this.vx = Math.cos(angle) * speed;
         this.vy = Math.sin(angle) * speed;
 
-        // Rotação autônoma sutil para estética espacial real
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 1.5;
 
-        // Gerar polígono irregular procedural para a silhueta clássica geométrica do asteroide
         this.numOffsets = 10 + Math.floor(Math.random() * 5);
         this.offsets = [];
         for (let i = 0; i < this.numOffsets; i++) {
-            // Distorção de 20% do raio geométrico
             this.offsets.push(0.8 + Math.random() * 0.4);
         }
     }
@@ -1999,7 +1972,6 @@ class Asteroid {
         this.y += this.vy * dt;
         this.rotation += this.rotationSpeed * dt;
 
-        // Wrap-Around nas bordas do espaço infinito
         const margin = this.radius;
         if (this.x < -margin) this.x = GAME_CONFIG.canvasWidth + margin;
         if (this.x > GAME_CONFIG.canvasWidth + margin) this.x = -margin;
@@ -2020,21 +1992,17 @@ class Asteroid {
         const sizeTag = this.level === 3 ? "large" : (this.level === 2 ? "medium" : "small");
         SFX.playExplosion(sizeTag);
 
-        // Dar Pontos ao Jogador
         gameState.score += this.level * 100;
         updateHUD();
 
-        // 20% de chance de soltar sucata de upgrade ⚡
         if (Math.random() < 0.35) {
             entities.scraps.push(new Scrap(this.x, this.y));
         }
 
-        // 10% de chance de soltar um Power-Up temporário "Overdrive" quando destrói um asteroide Grande!
         if (this.level === 3 && Math.random() < 0.3) {
             entities.powerups.push(new PowerUp(this.x, this.y));
         }
 
-        // Dividir em asteroides menores se aplicável (Mecânica clássica lendária)
         if (this.level > 1) {
             const nextLvl = this.level - 1;
             const nextRadius = this.radius * 0.55;
@@ -2042,12 +2010,10 @@ class Asteroid {
             entities.asteroids.push(new Asteroid(this.x, this.y, nextRadius, nextLvl));
         }
 
-        // Criar faíscas geométricas
         for (let i = 0; i < this.level * 8; i++) {
             entities.particles.push(new Particle(this.x, this.y, "#94a3b8", "spark"));
         }
 
-        // Remover da lista filtrando na próxima atualização ou diretamente
         const idx = entities.asteroids.indexOf(this);
         if (idx !== -1) {
             entities.asteroids.splice(idx, 1);
@@ -2065,7 +2031,6 @@ class Asteroid {
         ctx.lineWidth = 1.8;
         ctx.fillStyle = "rgba(10, 10, 20, 0.9)";
 
-        // Desenhar polígono procedural usando os offsets salvos no construtor
         ctx.beginPath();
         for (let i = 0; i < this.numOffsets; i++) {
             const angle = (i / this.numOffsets) * Math.PI * 2;
@@ -2090,13 +2055,12 @@ class EnemyShip {
     constructor(x, y, type = "fighter") {
         this.x = x;
         this.y = y;
-        this.type = type; // "fighter", "bomber", "defender"
+        this.type = type;
         this.destroyed = false;
 
         this.radius = type === "fighter" ? 14 : (type === "bomber" ? 22 : 18);
         this.hp = type === "fighter" ? 30 : (type === "bomber" ? 70 : 100);
 
-        // Física e IA
         this.vx = 0;
         this.vy = 0;
         this.angle = Math.random() * Math.PI * 2;
@@ -2107,30 +2071,22 @@ class EnemyShip {
     update(dt) {
         if (!entities.player || entities.player.destroyed) return;
 
-        // IA: Perseguir jogador e atirar se estiver em alcance médio
         const angleToPlayer = Math.atan2(entities.player.y - this.y, entities.player.x - this.x);
-
-        // Rotacionar lentamente em direção ao jogador
         this.angle += (angleToPlayer - this.angle) * 3 * dt;
 
-        // Avançar no vetor apontado
         this.vx = Math.cos(this.angle) * this.speed;
         this.vy = Math.sin(this.angle) * this.speed;
 
         this.x += this.vx * dt;
         this.y += this.vy * dt;
 
-        // Comportamento especial baseado no tipo
         if (this.type === "bomber") {
-            // Bomber planta minas perigosas na tela periodicamente
             this.shootCooldown -= dt;
             if (this.shootCooldown <= 0) {
                 this.shootCooldown = 3.5;
-                // Deixar um asteroide minúsculo e volátil como mina
                 entities.asteroids.push(new Asteroid(this.x, this.y, 14, 1));
             }
         } else {
-            // Caça normal atira projéteis vermelhos neon
             this.shootCooldown -= dt;
             if (this.shootCooldown <= 0) {
                 this.shootCooldown = 2.0 + Math.random();
@@ -2142,7 +2098,7 @@ class EnemyShip {
     shoot() {
         const angleToPlayer = Math.atan2(entities.player.y - this.y, entities.player.x - this.x);
         const eb = new Bullet(this.x, this.y, angleToPlayer, 350);
-        eb.color = "#ff0055"; // Laser vermelho hostil
+        eb.color = "#ff0055";
         entities.enemyBullets.push(eb);
         SFX.playLaser('laser');
     }
@@ -2161,17 +2117,14 @@ class EnemyShip {
         gameState.score += 250;
         updateHUD();
 
-        // 50% de chance de dar sucata estelar
         if (Math.random() < 0.5) {
             entities.scraps.push(new Scrap(this.x, this.y));
         }
 
-        // 15% de chance de dropar Overdrive Powerup temporário ao ser destruída
         if (Math.random() < 0.25) {
             entities.powerups.push(new PowerUp(this.x, this.y));
         }
 
-        // Partículas de fumaça e faíscas
         for (let i = 0; i < 20; i++) {
             entities.particles.push(new Particle(this.x, this.y, "#ff0055", "spark"));
         }
@@ -2188,7 +2141,6 @@ class EnemyShip {
         ctx.lineWidth = 2;
         ctx.fillStyle = "rgba(20, 4, 10, 0.9)";
 
-        // Silhueta geométrica alienígena hostil (Formato de asa delta dupla)
         ctx.beginPath();
         if (this.type === "fighter") {
             ctx.moveTo(this.radius, 0);
@@ -2196,14 +2148,12 @@ class EnemyShip {
             ctx.lineTo(-this.radius * 0.4, 0);
             ctx.lineTo(-this.radius, this.radius * 0.8);
         } else if (this.type === "bomber") {
-            // Formato hexagonal robusto
             ctx.moveTo(this.radius, 0);
             ctx.lineTo(this.radius * 0.3, -this.radius);
             ctx.lineTo(-this.radius, -this.radius * 0.6);
             ctx.lineTo(-this.radius, this.radius * 0.6);
             ctx.lineTo(this.radius * 0.3, this.radius);
         } else {
-            // Defender (Formato de cunha com asas protetoras frontais)
             ctx.moveTo(this.radius, 0);
             ctx.lineTo(-this.radius * 0.2, -this.radius);
             ctx.lineTo(-this.radius, -this.radius * 0.5);
@@ -2225,14 +2175,13 @@ class SectorBoss {
     constructor(x, y, bossType = 1) {
         this.x = x;
         this.y = y;
-        this.bossType = bossType; // 1, 2, 3, 4
+        this.bossType = bossType;
         this.destroyed = false;
 
         this.radius = 80;
         this.maxHp = 500 + bossType * 250;
         this.hp = this.maxHp;
 
-        // Atribuir nomes icônicos fantásticos sci-fi
         const names = [
             "LEVIATÃ DO VAZIO CLASSE S",
             "ENCOURAÇADO ENERGÉTICO 'AEGIS'",
@@ -2241,27 +2190,23 @@ class SectorBoss {
         ];
         this.name = names[bossType - 1];
 
-        // Lógica de movimentação
-        this.targetY = 220; // Posição ideal na parte superior central do cenário virtual
-        this.vx = 80; // Movimentação oscilatória horizontal
+        this.targetY = 220;
+        this.vx = 80;
         this.shootCooldown = 2.0;
         this.specialCooldown = 5.0;
     }
 
     update(dt) {
-        // 1. Descer suavemente até a arena na primeira aparição
         if (this.y < this.targetY) {
             this.y += 100 * dt;
             return;
         }
 
-        // 2. Oscilação horizontal senoidal contínua
         this.x += this.vx * dt;
         if (this.x < 150 || this.x > GAME_CONFIG.canvasWidth - 150) {
-            this.vx *= -1; // Inverter direção
+            this.vx *= -1;
         }
 
-        // 3. IA de Ataque Dinâmico baseada em recarga
         if (this.shootCooldown > 0) this.shootCooldown -= dt;
         if (this.specialCooldown > 0) this.specialCooldown -= dt;
 
@@ -2275,9 +2220,8 @@ class SectorBoss {
     }
 
     fireStandardBarrage() {
-        this.shootCooldown = 1.6 - this.bossType * 0.15; // Mais frenético conforme avança os chefes
+        this.shootCooldown = 1.6 - this.bossType * 0.15;
 
-        // Disparo radial circular de lasers vermelhos
         const numLasers = 6 + this.bossType * 2;
         for (let i = 0; i < numLasers; i++) {
             const angle = (i / numLasers) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
@@ -2292,14 +2236,11 @@ class SectorBoss {
     fireSpecialAttack() {
         this.specialCooldown = 6.0;
 
-        // Attacks temáticos surpresas 'fora da caixa'
         if (this.bossType === 1) {
-            // Boss 1: Invocar 3 naves caças rápidas assistentes de escolta
             for (let i = 0; i < 3; i++) {
                 entities.enemies.push(new EnemyShip(this.x + (i - 1) * 80, this.y + 40, "fighter"));
             }
         } else if (this.bossType === 2) {
-            // Boss 2: Super Chuva frontal de Plasma de precisão direcionada ao jogador
             if (entities.player) {
                 const angle = Math.atan2(entities.player.y - this.y, entities.player.x - this.x);
                 for (let j = -2; j <= 2; j++) {
@@ -2310,12 +2251,10 @@ class SectorBoss {
                 }
             }
         } else if (this.bossType === 3) {
-            // Boss 3: Gerar Buraco Negro instantâneo no centro da tela virtual!
             if (entities.anomalies.length === 0) {
                 entities.anomalies.push(new BlackHole(GAME_CONFIG.canvasWidth / 2, GAME_CONFIG.canvasHeight / 2));
             }
         } else if (this.bossType === 4) {
-            // Boss 4: Mega Ataque de Disparo Circular em espiral infinita
             for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
                 const b = new Bullet(this.x, this.y, angle, 320);
                 b.color = "#cc00ff";
@@ -2329,11 +2268,9 @@ class SectorBoss {
         this.hp -= amount;
         SFX.playShieldHit();
 
-        // Atualizar barra HUD de Boss
         const fill = document.getElementById("hud-boss-bar");
         if (fill) fill.style.width = `${(this.hp / this.maxHp) * 100}%`;
 
-        // Screen Shake rápido de feedback de dano
         gameState.screenShake = 4.5;
 
         if (this.hp <= 0) {
@@ -2347,26 +2284,21 @@ class SectorBoss {
         gameState.screenShake = 35;
         triggerGamepadVibration(2500, 1.0, 1.0);
 
-        // Ocultar barra HUD Boss
         document.getElementById("boss-hud-container").style.display = "none";
 
-        // Dar imensa recompensa de pontos e sucata estelar
         gameState.score += 5000;
         pilotData.accumulatedScrap += 150 * this.bossType;
         saveProgress();
         updateHUD();
 
-        // Chuva magnífica de dezenas de sucatas estelares
         for (let i = 0; i < 25; i++) {
             entities.scraps.push(new Scrap(this.x + (Math.random() - 0.5) * 80, this.y + (Math.random() - 0.5) * 80));
         }
 
-        // Drops de múltiplos Power-Ups ao derrotar qualquer boss!
         for (let i = 0; i < 2; i++) {
             entities.powerups.push(new PowerUp(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100));
         }
 
-        // Explosões contínuas e faíscas brilhantes
         for (let i = 0; i < 80; i++) {
             entities.particles.push(new Particle(this.x, this.y, "#ffcc00", "spark"));
             entities.particles.push(new Particle(this.x, this.y, "#ff0055", "smoke"));
@@ -2377,35 +2309,29 @@ class SectorBoss {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // Brilho Neon Alucinante
         ctx.shadowBlur = 25;
         ctx.shadowColor = this.bossType === 4 ? "#cc00ff" : (this.bossType === 3 ? "#00ffff" : "#ff3300");
         ctx.strokeStyle = this.bossType === 4 ? "#cc00ff" : (this.bossType === 3 ? "#00ffff" : "#ff3300");
         ctx.lineWidth = 4;
         ctx.fillStyle = "rgba(5, 5, 15, 0.95)";
 
-        // Formas icônicas estilizadas baseadas no tipo de Boss
         ctx.beginPath();
         if (this.bossType === 1) {
-            // Formato de Escorpião Estelar de Vazio
             ctx.moveTo(0, -this.radius);
             ctx.lineTo(this.radius, -this.radius * 0.4);
             ctx.lineTo(this.radius * 0.7, this.radius);
             ctx.lineTo(-this.radius * 0.7, this.radius);
             ctx.lineTo(-this.radius, -this.radius * 0.4);
         } else if (this.bossType === 2) {
-            // Formato de Encouraçado em Losango Alongado com asas extras de escudo
             ctx.moveTo(0, -this.radius * 1.2);
             ctx.lineTo(this.radius * 0.9, 0);
             ctx.lineTo(this.radius * 0.4, this.radius * 0.8);
             ctx.lineTo(-this.radius * 0.4, this.radius * 0.8);
             ctx.lineTo(-this.radius * 0.9, 0);
         } else if (this.bossType === 3) {
-            // Estilo Anel Circular Geométrico de Singularidade (Gira autonomamente!)
             const rTime = Date.now() * 0.002;
             ctx.arc(0, 0, this.radius * 0.9, rTime, rTime + Math.PI * 1.5);
         } else {
-            // Boss 4 Final: Estrela alienígena geométrica irregular octaédrica
             for (let i = 0; i < 8; i++) {
                 const angle = (i / 8) * Math.PI * 2;
                 const r = this.radius * (i % 2 === 0 ? 1.0 : 0.6);
@@ -2419,7 +2345,6 @@ class SectorBoss {
         ctx.fill();
         ctx.stroke();
 
-        // Desenhar núcleo brilhante no centro
         ctx.fillStyle = "#ffffff";
         ctx.beginPath();
         ctx.arc(0, 0, 15, 0, Math.PI * 2);
@@ -2436,14 +2361,13 @@ class BlackHole {
     constructor(x, y) {
         this.x = x;
         this.y = y;
-        this.radius = 25; // Horizonte de eventos visível
-        this.gravityRadius = 400; // Alcance da atração
-        this.gravityForce = 12; // Potência de sucção
+        this.radius = 25;
+        this.gravityRadius = 400;
+        this.gravityForce = 12;
         this.pulse = 0;
     }
 
     update(dt) {
-        // Efeito de pulsação visual contínua
         this.pulse += dt * 3.5;
     }
 
@@ -2451,7 +2375,6 @@ class BlackHole {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // Aura de distorção gravitacional externa
         const gradient = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.gravityRadius * 0.6);
         gradient.addColorStop(0, "rgba(20, 0, 40, 0.45)");
         gradient.addColorStop(0.3, "rgba(0, 255, 204, 0.1)");
@@ -2462,7 +2385,6 @@ class BlackHole {
         ctx.arc(0, 0, this.gravityRadius * 0.6, 0, Math.PI * 2);
         ctx.fill();
 
-        // Horizonte de eventos preto profundo com anel neon pulsante
         ctx.shadowBlur = 30 + Math.sin(this.pulse) * 10;
         ctx.shadowColor = "#cc00ff";
         ctx.strokeStyle = "#cc00ff";
@@ -2487,7 +2409,7 @@ class Scrap {
         this.y = y;
         this.radius = 8;
         this.value = GAME_CONFIG.baseScrapGain;
-        this.life = 10.0; // 10 segundos para coletar antes que evapore no espaço
+        this.life = 10.0;
 
         const angle = Math.random() * Math.PI * 2;
         const speed = 20 + Math.random() * 20;
@@ -2502,7 +2424,6 @@ class Scrap {
         this.life -= dt;
         this.pulse += dt * 5;
 
-        // Desaceleração gradual
         this.vx *= 0.98;
         this.vy *= 0.98;
     }
@@ -2511,14 +2432,12 @@ class Scrap {
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        // Brilho flutuante neon
         ctx.shadowBlur = 12 + Math.sin(this.pulse) * 4;
         ctx.shadowColor = "#ffaa00";
         ctx.strokeStyle = "#ffaa00";
         ctx.fillStyle = "rgba(255, 170, 0, 0.35)";
         ctx.lineWidth = 1.5;
 
-        // Desenhar forma de raio/cristal geométrico de energia (⚡)
         ctx.beginPath();
         ctx.moveTo(0, -this.radius);
         ctx.lineTo(this.radius * 0.6, -this.radius * 0.2);
@@ -2542,7 +2461,7 @@ class Particle {
         this.x = x;
         this.y = y;
         this.color = color;
-        this.type = type; // "spark", "smoke", "warp"
+        this.type = type;
 
         const angle = Math.random() * Math.PI * 2;
 
@@ -2561,7 +2480,6 @@ class Particle {
             this.life = 0.6 + Math.random() * 0.8;
             this.maxLife = this.life;
         } else if (type === "warp") {
-            // Partículas hiperespaciais correndo para fora radialmente do centro
             const speed = 300 + Math.random() * 600;
             this.vx = Math.cos(angle) * speed;
             this.vy = Math.sin(angle) * speed;
@@ -2577,7 +2495,7 @@ class Particle {
         this.life -= dt;
 
         if (this.type === "smoke") {
-            this.radius += dt * 15; // Fumaça expande e some
+            this.radius += dt * 15;
             this.vx *= 0.95;
             this.vy *= 0.95;
         }
@@ -2594,7 +2512,6 @@ class Particle {
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
         } else if (this.type === "smoke") {
-            // Fumaça desenhada em forma de círculos desfocados de gás estelar
             ctx.fillStyle = "rgba(40, 40, 60, 0.4)";
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
             ctx.fill();
