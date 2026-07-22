@@ -56,6 +56,37 @@ body, html {
     opacity: 0.85;
 }
 
+/* Toast de Notificação de Upgrade Disponível */
+.upgrade-toast {
+    position: absolute;
+    top: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(10, 10, 32, 0.9);
+    border: 1px solid #ffcc00;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: #ffcc00;
+    text-shadow: 0 0 5px rgba(255, 204, 0, 0.3);
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.2);
+    z-index: 150;
+    pointer-events: none;
+    animation: slideDownFade 0.4s ease-out, pulseOrange 1.5s infinite alternate;
+}
+
+@keyframes slideDownFade {
+    from { transform: translate(-50%, -20px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+@keyframes pulseOrange {
+    from { box-shadow: 0 0 10px rgba(255, 204, 0, 0.1); }
+    to { box-shadow: 0 0 20px rgba(255, 204, 0, 0.4); }
+}
+
 /* ==========================================================================
    INTERFACES DE MENUS (UI OVERLAY)
    ========================================================================== */
@@ -137,7 +168,7 @@ body, html {
     margin-bottom: 25px;
 }
 
-/* Painel de Ajustes (Estilo Consolidado) */
+/* Painel de Ajustes */
 .settings-panel {
     display: flex;
     flex-direction: column;
@@ -676,6 +707,10 @@ body, html {
 .hud-group {
     display: flex;
     flex-direction: column;
+}
+
+.hud-group.text-center {
+    width: 30%;
 }
 
 .hud-label {

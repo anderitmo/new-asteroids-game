@@ -17,6 +17,11 @@
         <!-- Efeito visual de Scanner de Tela Retro-Futurista (Scanlines + Vinheta) -->
         <div class="crt-overlay"></div>
 
+        <!-- Notificação de Toast/Alerta de Upgrade Disponível -->
+        <div id="upgrade-alert-toast" class="upgrade-toast" style="display: none;">
+            ⚠️ SISTEMA DE BORDO: UPGRADE DISPONÍVEL! PAUSE O JOGO PARA INSTALAR ⚡
+        </div>
+
         <!-- ================= TELA DE INTRO / CARREGAMENTO / MENUS ================= -->
         <div id="ui-overlay" class="ui-screen">
             <!-- TELA DE BOAS-VINDAS / MENU INICIAL -->
@@ -246,7 +251,8 @@
                 <p class="description">Simulação orbital suspensa temporariamente.</p>
                 <div class="menu-buttons">
                     <button id="btn-resume" class="btn btn-primary">RETOMAR JOGO</button>
-                    <button id="btn-restart" class="btn btn-secondary">REINICIAR FAZE</button>
+                    <button id="btn-pause-upgrades" class="btn btn-secondary" style="border-color: #ffaa00; color: #ffaa00;">MELHORAR NAVE (UPGRADES) ⚡</button>
+                    <button id="btn-restart" class="btn btn-secondary">REINICIAR FASE</button>
                     <button id="btn-quit" class="btn btn-danger">SAIR PARA O MENU</button>
                 </div>
             </div>

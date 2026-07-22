@@ -9,14 +9,15 @@
  * Adicionado pulo de fase via GET pula-fase.
  * Adicionado upgrade permanente de chassi e canhões (Duplo, Triplo, Quádruplo em leque).
  * Adicionados Power-ups temporários ("OVERDRIVE" com chassi gigante dourado e tiro quíntuplo).
- * Balanceamento: Fases encurtadas (menos ondas de inimigos e menos asteroides iniciais para maior dinamismo).
+ * Balanceamento: Fases encurtadas.
+ * Melhoria: Permitidos upgrades na tela de Pause, correção do upgrade do chassi e alertas de upgrade disponível na HUD!
  */
 
 // ==========================================================================
 // CONFIGURAÇÕES GERAIS E ESTADO DO JOGO
 // ==========================================================================
 const GAME_CONFIG = {
-    version: "1.5.0", // Versão com Fases Rápidas e Dinâmicas
+    version: "1.6.0", // Versão com upgrades no Pause e Alertas em tempo real
     totalSectors: 12,
     baseScrapGain: 15,
     maxUpgrades: 5,
@@ -52,14 +53,15 @@ let gameState = {
     warping: false,
     bossSpawned: false,
     currentWave: 1,
-    totalWaves: 2, // Reduzido de 3 para 2 nas fases normais para encurtar!
+    totalWaves: 2, // Apenas 2 Waves nas fases normais para encurtar!
     keys: {},
     screenShake: 0,
     gamepadConnected: false,
     gamepadIndex: null,
     lastTime: 0,
     universeSpeedMultiplier: 1.0, // Multiplicador de velocidade inicial ajustável pelo jogador!
-    bgTime: 0 // Variável de tempo para animar auroras e nébulas sutilmente
+    bgTime: 0, // Variável de tempo para animar auroras e nébulas sutilmente
+    openedUpgradesFromPause: false // Controle de fluxo para retornar ao pause
 };
 
 // Listas de Objetos Ativos no Jogo
@@ -476,11 +478,20 @@ function setupMenuNavigation() {
 
     // Central de Upgrades
     document.getElementById("btn-upgrades").addEventListener("click", () => {
+        gameState.openedUpgradesFromPause = false; // Fluxo regular vindo do menu principal
         openUpgradesScreen();
     });
+
     document.getElementById("btn-back-upgrades").addEventListener("click", () => {
-        showScreen(screenMenu);
+        if (gameState.openedUpgradesFromPause) {
+            // Retornar para tela de pause sem resetar progresso ou partida!
+            showScreen(screenPause);
+        } else {
+            // Retornar para menu inicial
+            showScreen(screenMenu);
+        }
     });
+
     document.getElementById("btn-reset-upgrades").addEventListener("click", () => {
         if (confirm("Deseja realmente resetar todos os upgrades? Toda a sucata acumulada será devolvida.")) {
             resetAllUpgrades();
@@ -491,6 +502,13 @@ function setupMenuNavigation() {
     document.getElementById("btn-resume").addEventListener("click", () => {
         togglePause();
     });
+
+    // ABRIR UPGRADES DURANTE O PAUSE!
+    document.getElementById("btn-pause-upgrades").addEventListener("click", () => {
+        gameState.openedUpgradesFromPause = true; // Ativar sinalizador de retorno
+        openUpgradesScreen();
+    });
+
     document.getElementById("btn-restart").addEventListener("click", () => {
         togglePause();
         startSector(pilotData.currentSector);
@@ -504,6 +522,7 @@ function setupMenuNavigation() {
         startSector(pilotData.currentSector);
     });
     document.getElementById("btn-gameover-upgrades").addEventListener("click", () => {
+        gameState.openedUpgradesFromPause = false;
         openUpgradesScreen();
     });
     document.getElementById("btn-gameover-menu").addEventListener("click", () => {
@@ -568,11 +587,13 @@ function quitToMenu() {
 // CENTRAL DE UPGRADES
 // ==========================================================================
 function openUpgradesScreen() {
-    document.getElementById("scraps-total").textContent = pilotData.accumulatedScrap;
+    // Durante o jogo ativo (em pause), somamos as moedas já salvas com as moedas ganhas neste setor atual
+    const currentAvailableScraps = pilotData.accumulatedScrap + (gameState.active ? gameState.scrapsInSector : 0);
+    document.getElementById("scraps-total").textContent = currentAvailableScraps;
 
     const updateItemUI = (key) => {
         const lvl = pilotData.upgrades[key];
-        const isMax = lvl >= GAME_CONFIG.maxUpgrades;
+        const isMax = lvl >= (key === 'chassis' ? 3 : GAME_CONFIG.maxUpgrades); // Chassi vai de 1 a 3
         const cost = isMax ? "MAX" : (lvl * 100 + (key === 'drone' ? 100 : 0));
 
         document.getElementById(`level-${key}`).textContent = (lvl === 0 && key === 'drone') ? "BLOQUEADO" : `NÍV ${lvl}`;
@@ -584,7 +605,7 @@ function openUpgradesScreen() {
         } else {
             btn.innerHTML = `UPGRADE <br><span class="cost">${cost}</span> ⚡`;
             // Desabilitar se não tiver sucata suficiente
-            btn.disabled = pilotData.accumulatedScrap < cost;
+            btn.disabled = currentAvailableScraps < cost;
         }
     };
 
@@ -604,12 +625,47 @@ function openUpgradesScreen() {
         newBtn.addEventListener("click", () => {
             const lvl = pilotData.upgrades[key];
             const cost = lvl * 100 + (key === 'drone' ? 100 : 0);
-            if (pilotData.accumulatedScrap >= cost) {
-                pilotData.accumulatedScrap -= cost;
+
+            // Recalcular scraps em tempo real
+            const totalScraps = pilotData.accumulatedScrap + (gameState.active ? gameState.scrapsInSector : 0);
+            if (totalScraps >= cost) {
+                if (gameState.active) {
+                    // Se estiver no pause, deduzimos primeiramente da sucata coletada no setor para sincronia instantânea
+                    if (gameState.scrapsInSector >= cost) {
+                        gameState.scrapsInSector -= cost;
+                    } else {
+                        const remainder = cost - gameState.scrapsInSector;
+                        gameState.scrapsInSector = 0;
+                        pilotData.accumulatedScrap -= remainder;
+                    }
+                } else {
+                    pilotData.accumulatedScrap -= cost;
+                }
+
                 pilotData.upgrades[key]++;
+
+                // Se o player estiver ativo, recarregamos as propriedades físicas do chassis dele em tempo real!
+                if (gameState.active && entities.player) {
+                    const currentHpRatio = entities.player.shield / entities.player.maxShield;
+
+                    entities.player.chassisLevel = pilotData.upgrades.chassis;
+                    entities.player.radius = 18 + (entities.player.chassisLevel - 1) * 6;
+                    entities.player.maxShield = 100 + (pilotData.upgrades.shield - 1) * 20 + (entities.player.chassisLevel - 1) * 30;
+
+                    // Manter mesma proporção de escudo atual
+                    entities.player.shield = entities.player.maxShield * currentHpRatio;
+
+                    // Atualizar drone
+                    if (key === 'drone' && !entities.drone && pilotData.upgrades.drone > 0) {
+                        entities.drone = new DroneNPC(entities.player);
+                    }
+                }
+
                 saveProgress();
                 SFX.playUpgradeSuccess();
-                openUpgradesScreen(); // Recarregar UI
+                openUpgradesScreen(); // Recarregar UI da loja
+                updateHUD();
+                checkAvailableUpgradesRealtime(); // Reavaliar toasts de alerta
             }
         });
     };
@@ -644,10 +700,51 @@ function resetAllUpgrades() {
         pilotData.upgrades[key] = (key === 'drone') ? 0 : 1;
     }
 
-    pilotData.accumulatedScrap += returnedScrap;
+    if (gameState.active) {
+        gameState.scrapsInSector += returnedScrap;
+    } else {
+        pilotData.accumulatedScrap += returnedScrap;
+    }
+
     saveProgress();
     SFX.playExplosion("large");
     openUpgradesScreen();
+    updateHUD();
+}
+
+/**
+ * VERIFICA EM TEMPO REAL SE O JOGADOR TEM CRÉDITOS PARA ALGUM UPGRADE
+ * Exibe um lindo aviso pulsante no topo da tela do jogo se houver.
+ */
+function checkAvailableUpgradesRealtime() {
+    const toast = document.getElementById("upgrade-alert-toast");
+    if (!toast) return;
+
+    if (!gameState.active) {
+        toast.style.display = "none";
+        return;
+    }
+
+    const currentTotalScraps = pilotData.accumulatedScrap + gameState.scrapsInSector;
+    let canAffordAny = false;
+
+    for (let key in pilotData.upgrades) {
+        const lvl = pilotData.upgrades[key];
+        const isMax = lvl >= (key === 'chassis' ? 3 : GAME_CONFIG.maxUpgrades);
+        if (!isMax) {
+            const cost = lvl * 100 + (key === 'drone' ? 100 : 0);
+            if (currentTotalScraps >= cost) {
+                canAffordAny = true;
+                break;
+            }
+        }
+    }
+
+    if (canAffordAny) {
+        toast.style.display = "block";
+    } else {
+        toast.style.display = "none";
+    }
 }
 
 // ==========================================================================
@@ -694,6 +791,7 @@ function startSector(sectorNum) {
     SFX.startAmbientMusic(sectorNum);
 
     updateHUD();
+    checkAvailableUpgradesRealtime();
 }
 
 function setupSectorLayout(sectorNum) {
@@ -848,6 +946,7 @@ function update(dt) {
                 SFX.playCollect();
                 entities.scraps.splice(i, 1);
                 updateHUD();
+                checkAvailableUpgradesRealtime(); // Reavaliar status de toasts
                 continue;
             }
         }
@@ -1098,6 +1197,7 @@ function triggerWarpSequence() {
 
     // Ocultar HUD Boss
     document.getElementById("boss-hud-container").style.display = "none";
+    document.getElementById("upgrade-alert-toast").style.display = "none"; // Desativar toasts de upgrade no warp
 
     // Criar super anel de partículas hipersônicas
     for (let i = 0; i < 150; i++) {
@@ -1131,6 +1231,9 @@ function triggerWarpSequence() {
         const nextNum = currentFinished + 1;
         document.getElementById("warp-next-sector").textContent = nextNum <= GAME_CONFIG.totalSectors ? `SETOR ${String(nextNum).padStart(2, '0')}` : "MISSÃO CONCLUÍDA!";
         document.getElementById("warp-scraps-gain").textContent = gameState.scrapsInSector;
+
+        // Resetar sucatas do setor já salvas no progress
+        gameState.scrapsInSector = 0;
 
         // Barra de progresso animada simulando cálculo hiperespacial
         let prog = 0;
@@ -1171,6 +1274,7 @@ function triggerPlayerExplosion() {
     SFX.playExplosion("player");
     triggerGamepadVibration(1500, 1.0, 1.0);
     gameState.screenShake = 25;
+    document.getElementById("upgrade-alert-toast").style.display = "none";
 
     // Gerar centenas de faíscas
     for (let i = 0; i < 120; i++) {
@@ -1187,6 +1291,7 @@ function triggerPlayerExplosion() {
             if (gameState.active) {
                 entities.player = new Player(GAME_CONFIG.canvasWidth / 2, GAME_CONFIG.canvasHeight / 2);
                 if (entities.drone) entities.drone.parent = entities.player;
+                checkAvailableUpgradesRealtime(); // Reavaliar toasts ao renascer
             }
         }, 1800);
     } else {
@@ -1448,7 +1553,7 @@ class Player {
 
         // Chassi Permanente: O tamanho e blindagem aumentam de acordo com o upgrade de Chassi
         this.chassisLevel = pilotData.upgrades.chassis || 1;
-        this.radius = 18 + (this.chassisLevel - 1) * 6; // Nave maior fisicamente de acordo com o upgrade de Chassi!
+        this.radius = 18 + (this.chassisLevel - 1) * 6; // Nave maior de acordo com o upgrade de Chassi!
 
         this.angle = -Math.PI / 2; // Apontando para cima inicialmente
         this.vx = 0;
