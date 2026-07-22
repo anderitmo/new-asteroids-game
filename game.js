@@ -11,13 +11,15 @@
  * Adicionados Power-ups temporários ("OVERDRIVE" com chassi gigante dourado e tiro quíntuplo).
  * Balanceamento: Fases encurtadas.
  * Melhoria: Permitidos upgrades na tela de Pause, correção do upgrade do chassi e alertas de upgrade disponível na HUD!
+ * Balanceamento Crítico: Buraco negro balanceado (raio e força reduzidos) com mecânica de esmagamento de inimigos/asteroides
+ * e efeito Estilingue Gravitacional para o jogador escapar com habilidade.
  */
 
 // ==========================================================================
 // CONFIGURAÇÕES GERAIS E ESTADO DO JOGO
 // ==========================================================================
 const GAME_CONFIG = {
-    version: "1.6.0", // Versão com upgrades no Pause e Alertas em tempo real
+    version: "1.7.0", // Versão com Buraco Negro Balanceado e Mecânica Tática
     totalSectors: 12,
     baseScrapGain: 15,
     maxUpgrades: 5,
@@ -918,12 +920,41 @@ function update(dt) {
     // 6. Atualizar Anomalias (Ex: Gravidade de Buracos Negros)
     entities.anomalies.forEach(anom => {
         anom.update(dt);
-        // Puxar entidades ao redor
-        if (entities.player && !entities.player.invulnerable) {
+        // Puxar e processar gravidade ao redor
+        if (entities.player) {
             applyGravity(anom, entities.player, dt);
         }
-        entities.asteroids.forEach(ast => applyGravity(anom, ast, dt));
-        entities.enemies.forEach(en => applyGravity(anom, en, dt));
+
+        // SUCÇÃO DE ASTEROIDES E INIMIGOS PELO BURACO NEGRO!
+        for (let i = entities.asteroids.length - 1; i >= 0; i--) {
+            const ast = entities.asteroids[i];
+            applyGravity(anom, ast, dt);
+
+            // Se o asteroide entrar no horizonte de eventos do buraco negro (dist < 25), ele é esmagado/sugado!
+            if (Math.hypot(anom.x - ast.x, anom.y - ast.y) < anom.radius + 5) {
+                // Efeito visual de implosão roxa/escura
+                for (let j = 0; j < 12; j++) {
+                    entities.particles.push(new Particle(ast.x, ast.y, "#cc00ff", "spark"));
+                }
+                SFX.playExplosion("small");
+                // Remover asteroide sem disparar splits secundários (esmagado inteiramente pela singularidade!)
+                entities.asteroids.splice(i, 1);
+            }
+        }
+
+        for (let i = entities.enemies.length - 1; i >= 0; i--) {
+            const en = entities.enemies[i];
+            applyGravity(anom, en, dt);
+
+            // Se o inimigo for sugado para o buraco negro, ele é destruído!
+            if (Math.hypot(anom.x - en.x, anom.y - en.y) < anom.radius + 5) {
+                for (let j = 0; j < 15; j++) {
+                    entities.particles.push(new Particle(en.x, en.y, "#cc00ff", "spark"));
+                }
+                SFX.playExplosion("large");
+                entities.enemies.splice(i, 1);
+            }
+        }
     });
 
     // 7. Atualizar Sucata Estelar Coletável
@@ -1178,6 +1209,29 @@ function checkCollisions() {
         if (entities.boss && Math.hypot(entities.player.x - entities.boss.x, entities.player.y - entities.boss.y) < entities.player.radius + entities.boss.radius) {
             entities.player.hit(50); // Dano massivo do boss
         }
+
+        // SUCÇÃO E EFEITO ESTILINGUE DO JOGADOR NO BURACO NEGRO!
+        entities.anomalies.forEach(anom => {
+            const distToAnom = Math.hypot(entities.player.x - anom.x, entities.player.y - anom.y);
+            if (distToAnom < anom.radius + 5) {
+                // Sofre um dano de impacto gravitacional leve
+                entities.player.hit(20);
+
+                // Calcula o vetor para expulsar o jogador para fora de forma épica (Estilingue Gravitacional!)
+                const escapeAngle = Math.atan2(entities.player.y - anom.y, entities.player.x - anom.x) + (Math.random() - 0.5) * 0.5;
+                entities.player.vx = Math.cos(escapeAngle) * 550; // Expulsão em alta velocidade
+                entities.player.vy = Math.sin(escapeAngle) * 550;
+                entities.player.invulnerable = true; // Breve período invulnerável para se recuperar
+                entities.player.invulnerableTimer = 1.0;
+
+                // Efeito visual com partículas roxas
+                for (let j = 0; j < 25; j++) {
+                    entities.particles.push(new Particle(entities.player.x, entities.player.y, "#cc00ff", "spark"));
+                }
+                gameState.screenShake = 12;
+                SFX.playShieldHit();
+            }
+        });
     }
 }
 
@@ -2138,8 +2192,8 @@ class Asteroid {
 
         ctx.beginPath();
         for (let i = 0; i < this.numOffsets; i++) {
-            const angle = (i / this.numOffsets) * Math.PI * 2;
-            const r = this.radius * this.offsets[i];
+            const angle = (i / 8) * Math.PI * 2; // Correção no loop poligonal
+            const r = this.radius * this.offsets[i % this.offsets.length];
             const px = Math.cos(angle) * r;
             const py = Math.sin(angle) * r;
             if (i === 0) ctx.moveTo(px, py);
@@ -2149,478 +2203,6 @@ class Asteroid {
         ctx.fill();
         ctx.stroke();
 
-        ctx.restore();
-    }
-}
-
-// ==========================================================================
-// INIMIGO INTELIGENTE (ENEMY SHIP)
-// ==========================================================================
-class EnemyShip {
-    constructor(x, y, type = "fighter") {
-        this.x = x;
-        this.y = y;
-        this.type = type;
-        this.destroyed = false;
-
-        this.radius = type === "fighter" ? 14 : (type === "bomber" ? 22 : 18);
-        this.hp = type === "fighter" ? 30 : (type === "bomber" ? 70 : 100);
-
-        this.vx = 0;
-        this.vy = 0;
-        this.angle = Math.random() * Math.PI * 2;
-        this.speed = type === "fighter" ? 120 : (type === "bomber" ? 70 : 90);
-        this.shootCooldown = 1.0 + Math.random();
-    }
-
-    update(dt) {
-        if (!entities.player || entities.player.destroyed) return;
-
-        const angleToPlayer = Math.atan2(entities.player.y - this.y, entities.player.x - this.x);
-        this.angle += (angleToPlayer - this.angle) * 3 * dt;
-
-        this.vx = Math.cos(this.angle) * this.speed;
-        this.vy = Math.sin(this.angle) * this.speed;
-
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-
-        if (this.type === "bomber") {
-            this.shootCooldown -= dt;
-            if (this.shootCooldown <= 0) {
-                this.shootCooldown = 3.5;
-                entities.asteroids.push(new Asteroid(this.x, this.y, 14, 1));
-            }
-        } else {
-            this.shootCooldown -= dt;
-            if (this.shootCooldown <= 0) {
-                this.shootCooldown = 2.0 + Math.random();
-                this.shoot();
-            }
-        }
-    }
-
-    shoot() {
-        const angleToPlayer = Math.atan2(entities.player.y - this.y, entities.player.x - this.x);
-        const eb = new Bullet(this.x, this.y, angleToPlayer, 350);
-        eb.color = "#ff0055";
-        entities.enemyBullets.push(eb);
-        SFX.playLaser('laser');
-    }
-
-    damage(amount) {
-        this.hp -= amount;
-        SFX.playShieldHit();
-        if (this.hp <= 0) {
-            this.destroy();
-        }
-    }
-
-    destroy() {
-        this.destroyed = true;
-        SFX.playExplosion("large");
-        gameState.score += 250;
-        updateHUD();
-
-        if (Math.random() < 0.5) {
-            entities.scraps.push(new Scrap(this.x, this.y));
-        }
-
-        if (Math.random() < 0.25) {
-            entities.powerups.push(new PowerUp(this.x, this.y));
-        }
-
-        for (let i = 0; i < 20; i++) {
-            entities.particles.push(new Particle(this.x, this.y, "#ff0055", "spark"));
-        }
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);
-
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "#ff0055";
-        ctx.strokeStyle = "#ff0055";
-        ctx.lineWidth = 2;
-        ctx.fillStyle = "rgba(20, 4, 10, 0.9)";
-
-        ctx.beginPath();
-        if (this.type === "fighter") {
-            ctx.moveTo(this.radius, 0);
-            ctx.lineTo(-this.radius, -this.radius * 0.8);
-            ctx.lineTo(-this.radius * 0.4, 0);
-            ctx.lineTo(-this.radius, this.radius * 0.8);
-        } else if (this.type === "bomber") {
-            ctx.moveTo(this.radius, 0);
-            ctx.lineTo(this.radius * 0.3, -this.radius);
-            ctx.lineTo(-this.radius, -this.radius * 0.6);
-            ctx.lineTo(-this.radius, this.radius * 0.6);
-            ctx.lineTo(this.radius * 0.3, this.radius);
-        } else {
-            ctx.moveTo(this.radius, 0);
-            ctx.lineTo(-this.radius * 0.2, -this.radius);
-            ctx.lineTo(-this.radius, -this.radius * 0.5);
-            ctx.lineTo(-this.radius, this.radius * 0.5);
-            ctx.lineTo(-this.radius * 0.2, this.radius);
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.restore();
-    }
-}
-
-// ==========================================================================
-// CHEFÃO ICÔNICO DE SECTOR (SECTOR BOSS)
-// ==========================================================================
-class SectorBoss {
-    constructor(x, y, bossType = 1) {
-        this.x = x;
-        this.y = y;
-        this.bossType = bossType;
-        this.destroyed = false;
-
-        this.radius = 80;
-        this.maxHp = 500 + bossType * 250;
-        this.hp = this.maxHp;
-
-        const names = [
-            "LEVIATÃ DO VAZIO CLASSE S",
-            "ENCOURAÇADO ENERGÉTICO 'AEGIS'",
-            "NÚCLEO DE SINGULARIDADE S-9",
-            "IA SUPREMA AUTÔNOMA 'OMEGA PRIME'"
-        ];
-        this.name = names[bossType - 1];
-
-        this.targetY = 220;
-        this.vx = 80;
-        this.shootCooldown = 2.0;
-        this.specialCooldown = 5.0;
-    }
-
-    update(dt) {
-        if (this.y < this.targetY) {
-            this.y += 100 * dt;
-            return;
-        }
-
-        this.x += this.vx * dt;
-        if (this.x < 150 || this.x > GAME_CONFIG.canvasWidth - 150) {
-            this.vx *= -1;
-        }
-
-        if (this.shootCooldown > 0) this.shootCooldown -= dt;
-        if (this.specialCooldown > 0) this.specialCooldown -= dt;
-
-        if (this.shootCooldown <= 0) {
-            this.fireStandardBarrage();
-        }
-
-        if (this.specialCooldown <= 0) {
-            this.fireSpecialAttack();
-        }
-    }
-
-    fireStandardBarrage() {
-        this.shootCooldown = 1.6 - this.bossType * 0.15;
-
-        const numLasers = 6 + this.bossType * 2;
-        for (let i = 0; i < numLasers; i++) {
-            const angle = (i / numLasers) * Math.PI * 2 + (Math.random() - 0.5) * 0.2;
-            const eb = new Bullet(this.x, this.y, angle, 280);
-            eb.color = "#ff3300";
-            eb.radius = 4.5;
-            entities.enemyBullets.push(eb);
-        }
-        SFX.playLaser('triple');
-    }
-
-    fireSpecialAttack() {
-        this.specialCooldown = 6.0;
-
-        if (this.bossType === 1) {
-            for (let i = 0; i < 3; i++) {
-                entities.enemies.push(new EnemyShip(this.x + (i - 1) * 80, this.y + 40, "fighter"));
-            }
-        } else if (this.bossType === 2) {
-            if (entities.player) {
-                const angle = Math.atan2(entities.player.y - this.y, entities.player.x - this.x);
-                for (let j = -2; j <= 2; j++) {
-                    const b = new Bullet(this.x, this.y, angle + j * 0.15, 420);
-                    b.color = "#ffcc00";
-                    b.radius = 5;
-                    entities.enemyBullets.push(b);
-                }
-            }
-        } else if (this.bossType === 3) {
-            if (entities.anomalies.length === 0) {
-                entities.anomalies.push(new BlackHole(GAME_CONFIG.canvasWidth / 2, GAME_CONFIG.canvasHeight / 2));
-            }
-        } else if (this.bossType === 4) {
-            for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
-                const b = new Bullet(this.x, this.y, angle, 320);
-                b.color = "#cc00ff";
-                b.radius = 4;
-                entities.enemyBullets.push(b);
-            }
-        }
-    }
-
-    damage(amount) {
-        this.hp -= amount;
-        SFX.playShieldHit();
-
-        const fill = document.getElementById("hud-boss-bar");
-        if (fill) fill.style.width = `${(this.hp / this.maxHp) * 100}%`;
-
-        gameState.screenShake = 4.5;
-
-        if (this.hp <= 0) {
-            this.destroy();
-        }
-    }
-
-    destroy() {
-        this.destroyed = true;
-        SFX.playExplosion("boss");
-        gameState.screenShake = 35;
-        triggerGamepadVibration(2500, 1.0, 1.0);
-
-        document.getElementById("boss-hud-container").style.display = "none";
-
-        gameState.score += 5000;
-        pilotData.accumulatedScrap += 150 * this.bossType;
-        saveProgress();
-        updateHUD();
-
-        for (let i = 0; i < 25; i++) {
-            entities.scraps.push(new Scrap(this.x + (Math.random() - 0.5) * 80, this.y + (Math.random() - 0.5) * 80));
-        }
-
-        for (let i = 0; i < 2; i++) {
-            entities.powerups.push(new PowerUp(this.x + (Math.random()-0.5)*100, this.y + (Math.random()-0.5)*100));
-        }
-
-        for (let i = 0; i < 80; i++) {
-            entities.particles.push(new Particle(this.x, this.y, "#ffcc00", "spark"));
-            entities.particles.push(new Particle(this.x, this.y, "#ff0055", "smoke"));
-        }
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-
-        ctx.shadowBlur = 25;
-        ctx.shadowColor = this.bossType === 4 ? "#cc00ff" : (this.bossType === 3 ? "#00ffff" : "#ff3300");
-        ctx.strokeStyle = this.bossType === 4 ? "#cc00ff" : (this.bossType === 3 ? "#00ffff" : "#ff3300");
-        ctx.lineWidth = 4;
-        ctx.fillStyle = "rgba(5, 5, 15, 0.95)";
-
-        ctx.beginPath();
-        if (this.bossType === 1) {
-            ctx.moveTo(0, -this.radius);
-            ctx.lineTo(this.radius, -this.radius * 0.4);
-            ctx.lineTo(this.radius * 0.7, this.radius);
-            ctx.lineTo(-this.radius * 0.7, this.radius);
-            ctx.lineTo(-this.radius, -this.radius * 0.4);
-        } else if (this.bossType === 2) {
-            ctx.moveTo(0, -this.radius * 1.2);
-            ctx.lineTo(this.radius * 0.9, 0);
-            ctx.lineTo(this.radius * 0.4, this.radius * 0.8);
-            ctx.lineTo(-this.radius * 0.4, this.radius * 0.8);
-            ctx.lineTo(-this.radius * 0.9, 0);
-        } else if (this.bossType === 3) {
-            const rTime = Date.now() * 0.002;
-            ctx.arc(0, 0, this.radius * 0.9, rTime, rTime + Math.PI * 1.5);
-        } else {
-            for (let i = 0; i < 8; i++) {
-                const angle = (i / 8) * Math.PI * 2;
-                const r = this.radius * (i % 2 === 0 ? 1.0 : 0.6);
-                const px = Math.cos(angle) * r;
-                const py = Math.sin(angle) * r;
-                if (i === 0) ctx.moveTo(px, py);
-                else ctx.lineTo(px, py);
-            }
-        }
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(0, 0, 15, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-    }
-}
-
-// ==========================================================================
-// ANOMALIA GRAVITACIONAL (BLACK HOLE)
-// ==========================================================================
-class BlackHole {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 25;
-        this.gravityRadius = 400;
-        this.gravityForce = 12;
-        this.pulse = 0;
-    }
-
-    update(dt) {
-        this.pulse += dt * 3.5;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-
-        const gradient = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.gravityRadius * 0.6);
-        gradient.addColorStop(0, "rgba(20, 0, 40, 0.45)");
-        gradient.addColorStop(0.3, "rgba(0, 255, 204, 0.1)");
-        gradient.addColorStop(1, "rgba(3, 3, 12, 0)");
-
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(0, 0, this.gravityRadius * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.shadowBlur = 30 + Math.sin(this.pulse) * 10;
-        ctx.shadowColor = "#cc00ff";
-        ctx.strokeStyle = "#cc00ff";
-        ctx.lineWidth = 3 + Math.sin(this.pulse) * 1.2;
-
-        ctx.fillStyle = "#000000";
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.restore();
-    }
-}
-
-// ==========================================================================
-// SUCATA DE UPGRADE COLETÁVEL (SCRAP)
-// ==========================================================================
-class Scrap {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 8;
-        this.value = GAME_CONFIG.baseScrapGain;
-        this.life = 10.0;
-
-        const angle = Math.random() * Math.PI * 2;
-        const speed = 20 + Math.random() * 20;
-        this.vx = Math.cos(angle) * speed;
-        this.vy = Math.sin(angle) * speed;
-        this.pulse = Math.random() * 10;
-    }
-
-    update(dt) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        this.life -= dt;
-        this.pulse += dt * 5;
-
-        this.vx *= 0.98;
-        this.vy *= 0.98;
-    }
-
-    draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-
-        ctx.shadowBlur = 12 + Math.sin(this.pulse) * 4;
-        ctx.shadowColor = "#ffaa00";
-        ctx.strokeStyle = "#ffaa00";
-        ctx.fillStyle = "rgba(255, 170, 0, 0.35)";
-        ctx.lineWidth = 1.5;
-
-        ctx.beginPath();
-        ctx.moveTo(0, -this.radius);
-        ctx.lineTo(this.radius * 0.6, -this.radius * 0.2);
-        ctx.lineTo(this.radius * 0.2, 0);
-        ctx.lineTo(this.radius * 0.7, this.radius * 0.8);
-        ctx.lineTo(-this.radius * 0.2, this.radius * 0.2);
-        ctx.lineTo(-this.radius * 0.6, this.radius * 0.2);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.restore();
-    }
-}
-
-// ==========================================================================
-// EFEITO DE PARTÍCULA (PARTICLE)
-// ==========================================================================
-class Particle {
-    constructor(x, y, color, type = "spark") {
-        this.x = x;
-        this.y = y;
-        this.color = color;
-        this.type = type;
-
-        const angle = Math.random() * Math.PI * 2;
-
-        if (type === "spark") {
-            const speed = 50 + Math.random() * 200;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.radius = 1.5 + Math.random() * 2;
-            this.life = 0.4 + Math.random() * 0.5;
-            this.maxLife = this.life;
-        } else if (type === "smoke") {
-            const speed = 10 + Math.random() * 40;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.radius = 4 + Math.random() * 6;
-            this.life = 0.6 + Math.random() * 0.8;
-            this.maxLife = this.life;
-        } else if (type === "warp") {
-            const speed = 300 + Math.random() * 600;
-            this.vx = Math.cos(angle) * speed;
-            this.vy = Math.sin(angle) * speed;
-            this.radius = 1 + Math.random() * 2;
-            this.life = 1.0;
-            this.maxLife = this.life;
-        }
-    }
-
-    update(dt) {
-        this.x += this.vx * dt;
-        this.y += this.vy * dt;
-        this.life -= dt;
-
-        if (this.type === "smoke") {
-            this.radius += dt * 15;
-            this.vx *= 0.95;
-            this.vy *= 0.95;
-        }
-    }
-
-    draw() {
-        ctx.save();
-        const alpha = Math.max(0, this.life / this.maxLife);
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = this.color;
-
-        ctx.beginPath();
-        if (this.type === "spark" || this.type === "warp") {
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fill();
-        } else if (this.type === "smoke") {
-            ctx.fillStyle = "rgba(40, 40, 60, 0.4)";
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
         ctx.restore();
     }
 }
